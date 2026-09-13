@@ -226,6 +226,7 @@ function newUser(id, name) {
     withdrawals: [],
     referralCount: 0,
     referralRewardCount: 0,
+    referralPendingZombies: 0,
     referredBy: null,
     referralRewardClaimed: false,
   };
@@ -306,10 +307,11 @@ function publicState(user) {
     referralCode: referralCodeFor(user.id),
     referralCount: Number(user.referralCount || 0),
     referralRewardCount: Number(user.referralRewardCount || 0),
+    referralPendingZombies: Number(user.referralPendingZombies || 0),
     attemptResetVersion: user.attemptResetVersion || 0,
     taskChannelRewardClaimed: user.taskChannelRewardClaimed === true,
+    referralRewardZombies: (Number(user.referralRewardCount) || 0) * 300,
   };
-}
 
 const RPS_CHOICES = new Set(['rock', 'paper', 'scissors']);
 const RPS_MIN_STAKE = 0.001;
@@ -765,7 +767,7 @@ app.post('/api/tasks/channel-claim', requireUserFromBody, async (req, res) => {
     if (user.referredBy && !user.referralRewardClaimed) {
       const inviter = users[String(user.referredBy)];
       if (inviter) {
-        inviter.coins += 300;
+        inviter.referralPendingZombies = Number(inviter.referralPendingZombies || 0) + 300;
         inviter.referralRewardCount = Number(inviter.referralRewardCount || 0) + 1;
         referralReward = 300;
       }
@@ -1105,6 +1107,15 @@ app.get('/api/withdrawals', requireUserFromQuery, (req, res) => {
 
 app.get('/api/referrals/status', requireUserFromQuery, (req, res) => {
   res.json({ state: publicState(req.user) });
+});
+
+app.post('/api/referrals/claim', requireUserFromBody, (req, res) => {
+  const rewardZombies = Number(req.user.referralPendingZombies || 0);
+  if (rewardZombies > 0) {
+    req.user.referralPendingZombies = 0;
+    persist();
+  }
+  res.json({ rewardZombies, state: publicState(req.user) });
 });
 
 // ---- Tournament score submission (separate from the coin economy) ----
