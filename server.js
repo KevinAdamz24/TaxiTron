@@ -300,7 +300,12 @@ function publicState(user) {
   const rewardDays = { red:30, white:30, green:30 };
   Object.keys(rewardDays).forEach((key) => {
     if (ownedSkins.includes(key) && !user.skinRewards[key]) {
-      user.skinRewards[key] = { remainingDays: rewardDays[key], lastCreditDate: berlinDayKey() };
+      user.skinRewards[key] = { remainingDays: rewardDays[key], expiresAt: Date.now() + rewardDays[key] * 86400000, lastCreditDate: berlinDayKey() };
+    } else if (ownedSkins.includes(key) && user.skinRewards[key] && !user.skinRewards[key].expiresAt) {
+      user.skinRewards[key].expiresAt = Date.now() + Number(user.skinRewards[key].remainingDays || rewardDays[key]) * 86400000;
+    }
+    if (user.skinRewards[key] && user.skinRewards[key].expiresAt) {
+      user.skinRewards[key].remainingDays = Math.max(0, Math.ceil((user.skinRewards[key].expiresAt - Date.now()) / 86400000));
     }
   });
   return {
@@ -721,10 +726,11 @@ app.post('/api/auth', (req, res) => {
   user.lastSeenAt = Date.now();
   ensureDailyReset(user);
   ensureTournamentReset(user);
+  const state = publicState(user);
   persist();
 
   const token = signToken({ uid: user.id, iat: Date.now() });
-  res.json({ token, state: publicState(user) });
+  res.json({ token, state });
 });
 
 // ---- Deposit info ----
@@ -749,7 +755,7 @@ app.post('/api/buy-skin', requireUserFromBody, (req, res) => {
   user.ownedSkins.push(key);
   user.level = Math.max(user.level || 1, levels[key]);
   if (!user.skinRewards || typeof user.skinRewards !== 'object') user.skinRewards = {};
-  user.skinRewards[key] = { remainingDays: 30, lastCreditDate: berlinDayKey() };
+  user.skinRewards[key] = { remainingDays: 30, expiresAt: Date.now() + 30 * 86400000, lastCreditDate: berlinDayKey() };
   persist();
   res.json({ state: publicState(user) });
 });

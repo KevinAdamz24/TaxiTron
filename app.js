@@ -501,7 +501,10 @@
       const owned = store.ownedSkins.indexOf(def.key) !== -1;
       const selected = store.skin === def.key;
       const reward = store.skinRewards[def.key];
-      const rewardActive = !!(reward && reward.remainingDays > 0);
+      const remainingDays = reward && reward.expiresAt
+        ? Math.max(0, Math.ceil((reward.expiresAt - Date.now()) / 86400000))
+        : Number(reward && reward.remainingDays || 0);
+      const rewardActive = !!(reward && remainingDays > 0);
 
       const item = document.createElement('div');
       item.className = 'skin-item' + (selected ? ' selected' : '') + (def.status==='soon' ? ' soon' : '');
@@ -546,14 +549,14 @@
       let rewardBlock = '';
       if (def.dailyReward > 0){
         if (rewardActive){
-          const pct = Math.round(((def.rewardDays - reward.remainingDays) / def.rewardDays) * 100);
+          const pct = Math.round(((def.rewardDays - remainingDays) / def.rewardDays) * 100);
           const todayRemaining = Math.max(0, getDailyPtsCap() - store.pointsToday);
           const todayPct = Math.min(100, Math.round((store.pointsToday / getDailyPtsCap()) * 100));
           rewardBlock =
             '<div class="skin-reward-box active">' +
               '<div class="skin-reward-row">' +
                 '<span>🎁 ' + t('skinRewardActive') + '</span>' +
-                '<span>' + reward.remainingDays + ' ' + t('skinDaysLeft') + '</span>' +
+                '<span>' + remainingDays + ' ' + t('skinDaysLeft') + '</span>' +
               '</div>' +
               '<div class="skin-reward-row"><span class="skin-today-pill' + (todayRemaining <= 0 ? ' full' : '') + '" style="--today-progress:' + todayPct + '%">' + t('skinTodayLeft').replace('{amount}', fmtTon(todayRemaining)) + '</span></div>' +
               '<div class="skin-reward-track"><div class="skin-reward-fill" style="width:' + pct + '%"></div></div>' +
@@ -607,7 +610,7 @@
             }
             store.ownedSkins.push(key);
             if (def.dailyReward > 0){
-              store.skinRewards[key] = { remainingDays: def.rewardDays, lastCreditDate: todayStr() };
+              store.skinRewards[key] = { remainingDays: def.rewardDays, expiresAt: Date.now() + def.rewardDays * 86400000, lastCreditDate: todayStr() };
             }
           }
           store.skin = key;
@@ -639,6 +642,9 @@
       });
     });
   }
+  setInterval(() => {
+    if (document.getElementById('screen-shop')?.classList.contains('active')) renderSkinShop();
+  }, 1000);
 
   /* ================= TOURNAMENT ================= */
   async function fetchLeaderboard(){
