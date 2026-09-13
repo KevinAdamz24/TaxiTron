@@ -1182,12 +1182,26 @@
     const link = document.getElementById('referralLink').value;
     if (!link) return;
     const tg = window.Telegram && window.Telegram.WebApp;
-    if (tg && typeof tg.openTelegramLink === 'function') {
-      tg.openTelegramLink('https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent('Join me in TaxiTron!'));
-    } else if (navigator.share) {
-      await navigator.share({ title:'TaxiTron', text:'Join me in TaxiTron!', url:link });
-    } else {
-      await navigator.clipboard.writeText(link);
+    const shareUrl = 'https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent('Join me in TaxiTron!');
+    try {
+      if (tg && typeof tg.openTelegramLink === 'function') {
+        tg.openTelegramLink(shareUrl);
+        return;
+      }
+      if (navigator.share) {
+        await navigator.share({ title:'TaxiTron', text:'Join me in TaxiTron!', url:link });
+        return;
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(link);
+        document.getElementById('referralShareBtn').textContent = 'Link copied';
+        setTimeout(() => { document.getElementById('referralShareBtn').textContent = 'Share invite link'; }, 1400);
+      } else {
+        window.open(shareUrl, '_blank', 'noopener');
+      }
+    } catch (error) {
+      if (tg && typeof tg.openLink === 'function') tg.openLink(shareUrl);
+      else window.open(shareUrl, '_blank', 'noopener');
     }
   });
 
