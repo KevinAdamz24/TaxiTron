@@ -931,7 +931,8 @@
       lastPersonScore = parseInt(localStorage.getItem(accountStorageKey('cr3d_pendingZombies')) || '0', 10);
       lastDistance = parseFloat(localStorage.getItem(accountStorageKey('cr3d_pendingDistance')) || '0');
       store.skinRewards = {};
-      store.skin = 'yellow';
+      const accountSkins = Array.isArray(state.ownedSkins) ? state.ownedSkins : ['yellow'];
+      store.skin = accountSkins.indexOf('green') !== -1 ? 'green' : accountSkins.indexOf('white') !== -1 ? 'white' : accountSkins.indexOf('red') !== -1 ? 'red' : 'yellow';
     }
     if (state.uid && !accountChanged) loadAccountAttempts();
     const resetKey = state.uid ? 'cr3d_attemptResetVersion_' + String(state.uid) : '';
