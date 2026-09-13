@@ -960,6 +960,9 @@
         store.skin = store.ownedSkins.indexOf('green') !== -1 ? 'green' : store.ownedSkins.indexOf('white') !== -1 ? 'white' : store.ownedSkins.indexOf('red') !== -1 ? 'red' : 'yellow';
       }
     }
+    if (state.skinRewards && typeof state.skinRewards === 'object') {
+      store.skinRewards = JSON.parse(JSON.stringify(state.skinRewards));
+    }
     saveStore();
     renderReferralUI(state);
     if (typeof setPlayerSkin === 'function') setPlayerSkin(store.skin);
