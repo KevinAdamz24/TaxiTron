@@ -526,7 +526,7 @@
           ? '<button class="skin-buy-btn selected-btn" disabled>' + t('levelLocked') + '</button>'
           : '<button class="skin-buy-btn owned" data-skin="' + def.key + '" data-action="select">' + t('skinSelectBtn') + '</button>';
       } else {
-        const priceLabel = def.price > 0 ? (def.price + ' TON') : t('skinFree');
+        const priceLabel = def.price > 0 ? ('Level ' + def.level + ' kaufen · ' + def.price + ' TON') : t('skinFree');
         btnHtml = '<button class="skin-buy-btn" data-skin="' + def.key + '" data-action="buy" ' +
           (def.price > store.points ? 'disabled' : '') + '>' + priceLabel + '</button>';
       }
@@ -573,7 +573,7 @@
 
       item.innerHTML =
         '<div class="skin-item-top">' +
-          '<div class="skin-item-img"><span class="skin-level-badge">' + def.level + '</span>' + (img ? '<img src="' + img + '" alt="">' : '') + '</div>' +
+          '<div class="skin-item-img"><span class="skin-level-badge">LEVEL ' + def.level + '</span>' + (img ? '<img src="' + img + '" alt="Level ' + def.level + ' taxi">' : '') + '</div>' +
           '<div class="skin-item-info">' +
             '<div class="skin-item-title">' + t(def.nameKey) + '<span class="skin-item-sub">' + t('skinLevelLabel') + ' ' + def.level + '</span></div>' +
             '<div class="skin-item-tags">' + metaHtml + '</div>' +

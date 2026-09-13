@@ -644,31 +644,32 @@
   .shop-buy-btn:disabled:not(.owned){ opacity:.45; cursor:not-allowed; }
 
   /* ---------- TAXI SKIN SHOP ---------- */
-  .skin-grid{ display:flex; flex-direction:column; gap:14px; }
+  .skin-grid{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
   .skin-item{
-    background:linear-gradient(160deg,#181826,#100f18);
-    border:1px solid #262436; border-radius:18px; padding:16px;
+    background:linear-gradient(160deg,#1a1e2c,#0e111a);
+    border:1px solid #30384c; border-radius:18px; padding:12px;
     position:relative; overflow:hidden;
-    box-shadow:0 4px 14px rgba(0,0,0,.25);
+    box-shadow:0 10px 24px rgba(0,0,0,.25);
     transition:border-color .15s, box-shadow .15s, transform .15s;
   }
-  .skin-item.selected{ border-color:#ffd93d; box-shadow:0 0 0 1px #ffd93d, 0 6px 18px rgba(255,217,61,.18); }
+  .skin-item:hover{ transform:translateY(-2px); border-color:#5a7393; }
+  .skin-item.selected{ border-color:#ffd93d; box-shadow:0 0 0 1px #ffd93d, 0 10px 26px rgba(255,217,61,.2); }
   .skin-item.soon{ opacity:0.55; filter:grayscale(0.3); }
-  .skin-item-top{ display:flex; align-items:center; gap:14px; }
+  .skin-item-top{ display:flex; flex-direction:column; align-items:stretch; gap:10px; }
   .skin-item-img{
-    position:relative; width:72px; height:72px; border-radius:16px; flex-shrink:0;
-    background:radial-gradient(circle at 32% 26%, #2a2a3d, #14141d 75%);
-    border:1px solid #2c2a3a; display:flex; align-items:center; justify-content:center;
-    box-shadow:inset 0 1px 0 rgba(255,255,255,.05);
+    position:relative; width:100%; height:132px; border-radius:13px; flex-shrink:0;
+    background:radial-gradient(circle at 38% 30%,#34455e,#121a28 72%);
+    border:1px solid #3c4c65; display:flex; align-items:center; justify-content:center;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.08); overflow:hidden;
   }
-  .skin-item-img img{ width:88%; height:88%; object-fit:contain; filter:drop-shadow(0 3px 6px rgba(0,0,0,.5)); }
+  .skin-item-img img{ width:94%; height:94%; object-fit:contain; filter:drop-shadow(0 6px 10px rgba(0,0,0,.55)); }
   .skin-level-badge{
-    position:absolute; top:-6px; left:-6px; width:22px; height:22px; border-radius:50%;
-    background:linear-gradient(180deg,#ffd93d,#ffb703); color:#3a2a00; font-size:0.68rem; font-weight:900;
-    display:flex; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,.4); z-index:2;
+    position:absolute; top:10px; left:10px; height:22px; padding:0 9px; border-radius:6px;
+    background:rgba(8,14,25,.88); border:1px solid #70caff; color:#bdeaff; font-size:0.58rem; font-weight:900;
+    letter-spacing:.8px; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,.4); z-index:2;
   }
   .skin-item-info{ flex:1; min-width:0; }
-  .skin-item-title{ font-weight:800; font-size:1rem; color:#fff; display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; }
+  .skin-item-title{ font-weight:900; font-size:0.92rem; color:#fff; display:flex; align-items:baseline; justify-content:space-between; gap:8px; flex-wrap:wrap; }
   .skin-item-sub{ font-size:0.68rem; font-weight:700; color:#8b86a0; letter-spacing:.3px; }
   .skin-item-tags{ display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
   .skin-tag{ font-size:0.68rem; font-weight:800; padding:4px 9px; border-radius:999px; letter-spacing:.2px; }
@@ -684,7 +685,7 @@
   .skin-reward-track{ margin-top:8px; background:#26243a; border-radius:999px; height:5px; overflow:hidden; }
   .skin-reward-fill{ height:100%; background:linear-gradient(90deg,#ffd93d,#ff6b6b); border-radius:999px; transition:width .3s; }
   .skin-reward-hint{ margin-top:4px; font-size:0.72rem; color:#a8a3b8; }
-  .skin-item-actions{ margin-top:14px; }
+  .skin-item-actions{ margin-top:12px; padding-top:10px; border-top:1px solid #2c3547; }
   .skin-buy-btn{
     width:100%; background:linear-gradient(180deg,#ffd93d,#ffb703); color:#3a2a00; border:none; border-radius:12px;
     padding:11px 14px; font-weight:800; font-size:0.86rem; cursor:pointer; box-shadow:0 4px 0 #b8860b;
@@ -695,6 +696,11 @@
   .skin-buy-btn.selected-btn{ background:linear-gradient(180deg,#8aff5c,#4fae2c); color:#0c2405; box-shadow:0 4px 0 #2f7a1e; }
   .skin-buy-btn.soon-btn{ background:#1c1c2a; color:#8b86a0; box-shadow:none; cursor:not-allowed; border:1px dashed #3a3750; }
   .skin-buy-btn:disabled{ opacity:.5; cursor:not-allowed; }
+  .skin-buy-btn:not(:disabled){ min-height:42px; }
+  @media (max-width:620px){
+    .skin-grid{ grid-template-columns:1fr; gap:14px; }
+    .skin-item-img{ height:150px; }
+  }
 
   /* ---------- TOURNAMENT ---------- */
   .tournament-timer{ text-align:center; background:linear-gradient(160deg,#1c1c2a,#100f18); border:1px solid #2a3d22; border-radius:14px; padding:14px; font-size:0.85rem; color:#a8a3b8; }
