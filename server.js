@@ -312,6 +312,7 @@ function publicState(user) {
     taskChannelRewardClaimed: user.taskChannelRewardClaimed === true,
     referralRewardZombies: (Number(user.referralRewardCount) || 0) * 300,
   };
+}
 
 const RPS_CHOICES = new Set(['rock', 'paper', 'scissors']);
 const RPS_MIN_STAKE = 0.001;
