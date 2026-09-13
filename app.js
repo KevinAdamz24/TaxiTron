@@ -779,6 +779,24 @@
         applyServerState(data.state);
         renderReferralUI(data.state);
       }
+      const rewardResponse = await fetch(SERVER_URL + '/api/referrals/claim', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({ token:serverSession.token })
+      });
+      if (rewardResponse.ok) {
+        const rewardData = await rewardResponse.json();
+        const rewardZombies = Number(rewardData.rewardZombies || 0);
+        if (rewardZombies > 0) {
+          lastPersonScore += rewardZombies;
+          savePending();
+          refreshTopUI();
+        }
+        if (rewardData.state) {
+          applyServerState(rewardData.state);
+          renderReferralUI(rewardData.state);
+        }
+      }
     } catch (error) {
       // The next polling cycle retries after a temporary network failure.
     } finally {
