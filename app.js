@@ -253,7 +253,7 @@
   function lockLevelTwoAttemptsAtDailyCap(){
     if (!dailyEarningsComplete() || store.attemptsResetAt) return;
     store.attemptsLeft = 0;
-    store.attemptsResetAt = Date.now() + ATTEMPT_COOLDOWN_LEVEL_TWO_MS;
+    store.attemptsResetAt = getAttemptResetAt();
     saveStore();
   }
 
@@ -315,15 +315,29 @@
   const MAX_ATTEMPTS_LEVEL_ONE = 10;
   const MAX_ATTEMPTS_LEVEL_TWO = 15;
   const ATTEMPT_COOLDOWN_LEVEL_ONE_MS = 2 * 60 * 60 * 1000;
-  const ATTEMPT_COOLDOWN_LEVEL_TWO_MS = 24 * 60 * 60 * 1000;
+  function nextBerlinMidnight(){
+    const now = new Date();
+    const berlinNow = new Date(now.toLocaleString('en-US', { timeZone:'Europe/Berlin' }));
+    const berlinTomorrow = new Date(berlinNow);
+    berlinTomorrow.setHours(24, 0, 0, 0);
+    return now.getTime() + (berlinTomorrow.getTime() - berlinNow.getTime());
+  }
   function getMaxAttempts(){ return store.level >= 2 ? MAX_ATTEMPTS_LEVEL_TWO : MAX_ATTEMPTS_LEVEL_ONE; }
-  function getAttemptCooldown(){ return store.level >= 2 ? ATTEMPT_COOLDOWN_LEVEL_TWO_MS : ATTEMPT_COOLDOWN_LEVEL_ONE_MS; }
+  function getAttemptResetAt(){ return store.level >= 2 ? nextBerlinMidnight() : Date.now() + ATTEMPT_COOLDOWN_LEVEL_ONE_MS; }
   function isAttemptLimited(){ return store.level <= 4; }
   function ensureAttempts(){
     if (!isAttemptLimited()) return;
     const maxAttempts = getMaxAttempts();
     const now = Date.now();
-    const hasValidResetAt = Number.isFinite(store.attemptsResetAt) && store.attemptsResetAt > 0;
+    let hasValidResetAt = Number.isFinite(store.attemptsResetAt) && store.attemptsResetAt > 0;
+    if (store.level >= 2 && store.attemptsLeft === 0) {
+      const midnight = nextBerlinMidnight();
+      if (!hasValidResetAt || store.attemptsResetAt > midnight) {
+        store.attemptsResetAt = midnight;
+        hasValidResetAt = true;
+        saveStore();
+      }
+    }
     if (!Number.isFinite(store.attemptsLeft) || (store.attemptsLeft === 0 && !hasValidResetAt)){
       store.attemptsLeft = maxAttempts;
       store.attemptsResetAt = null;
@@ -348,7 +362,7 @@
     ensureAttempts();
     if (store.attemptsLeft <= 0) return false;
     store.attemptsLeft -= 1;
-    if (store.attemptsLeft === 0) store.attemptsResetAt = Date.now() + getAttemptCooldown();
+    if (store.attemptsLeft === 0) store.attemptsResetAt = getAttemptResetAt();
     saveStore();
     return true;
   }
