@@ -752,16 +752,24 @@
   function renderReferralUI(state){
     const linkEl = document.getElementById('referralLink');
     const countEl = document.getElementById('referralCount');
-    if (!linkEl || !state || !state.referralCode) return;
+    if (!linkEl) return;
+    const telegramUser = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user;
+    const uid = state && state.uid || localStorage.getItem('cr3d_serverUid') || telegramUser && telegramUser.id;
+    const referralCode = state && state.referralCode || (uid ? 'ref_' + String(uid) : '');
+    if (!referralCode) {
+      linkEl.value = 'Open the game in Telegram to get your link';
+      return;
+    }
     const configuredBot = window.TAXITRON_BOT_USERNAME || '';
     linkEl.value = configuredBot
-      ? 'https://t.me/' + configuredBot + '?startapp=' + encodeURIComponent(state.referralCode)
-      : window.location.origin + window.location.pathname + '?ref=' + encodeURIComponent(state.referralCode);
-    if (countEl) countEl.textContent = 'Invited players: ' + Number(state.referralCount || 0) + ' · Rewards earned: ' + Number(state.referralRewardCount || 0) + ' × 300 zombies';
+      ? 'https://t.me/' + configuredBot + '?startapp=' + encodeURIComponent(referralCode)
+      : window.location.origin + window.location.pathname + '?ref=' + encodeURIComponent(referralCode);
+    if (countEl) countEl.textContent = 'Invited players: ' + Number(state && state.referralCount || 0) + ' · Rewards earned: ' + Number(state && state.referralRewardCount || 0) + ' × 300 zombies';
   }
+  renderReferralUI();
 
   async function initServerSession(){
-    if (!SERVER_URL) { window.__depositDebug = 'no-server-url'; loadDepositMemo(); return; }
+    if (!SERVER_URL) { window.__depositDebug = 'no-server-url'; renderReferralUI(); loadDepositMemo(); return; }
     try {
       const tg = window.Telegram && window.Telegram.WebApp;
       const initData = tg && tg.initData;
