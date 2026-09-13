@@ -2026,6 +2026,9 @@
       z += (isTelegramWebView ? 18 : 12) + Math.random() * (isTelegramWebView ? 10 : 9);
     }
   });
+  const lanternRepeat = lanternGroup.clone();
+  lanternRepeat.position.z = -sceneryTrackLength;
+  lanternGroup.add(lanternRepeat);
   scene.add(lanternGroup);
 
   // Recycling dashed lane lines
