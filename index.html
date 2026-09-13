@@ -119,6 +119,14 @@
       <button class="menu-btn" id="exchangeBtn" data-i18n="exchangeBtn">Exchange (2 🪙 per zombie)</button>
     </div>
 
+    <div class="referral-card">
+      <div class="referral-title">Invite friends</div>
+      <div class="referral-copy">Share your personal link. Each new player who completes the channel task earns you 300 Zombies once.</div>
+      <div class="referral-row"><input id="referralLink" class="withdraw-input" readonly placeholder="Open the game in Telegram"><button class="menu-btn secondary" id="referralCopyBtn" type="button">Copy</button></div>
+      <button class="menu-btn" id="referralShareBtn" type="button">Share invite link</button>
+      <div class="referral-count" id="referralCount">Invited players: 0</div>
+    </div>
+
     <div class="wallet-tabs">
       <button class="wallet-tab active" id="walletTabDeposit" type="button" data-i18n="depositTab">📥 Deposit</button>
       <button class="wallet-tab" id="walletTabWithdraw" type="button" data-i18n="withdrawTab">💎 Withdraw</button>
@@ -280,6 +288,7 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>window.TAXITRON_BOT_USERNAME = 'TaxiTronBot';</script>
 <script src="app.js?v=level3-x53-manual-choices"></script>
 </body>
 </html>

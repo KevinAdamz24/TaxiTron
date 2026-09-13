@@ -749,17 +749,30 @@
     : "https://taxitron-production.up.railway.app";
   const serverSession = { token: null, online: false };
 
+  function renderReferralUI(state){
+    const linkEl = document.getElementById('referralLink');
+    const countEl = document.getElementById('referralCount');
+    if (!linkEl || !state || !state.referralCode) return;
+    const configuredBot = window.TAXITRON_BOT_USERNAME || '';
+    linkEl.value = configuredBot
+      ? 'https://t.me/' + configuredBot + '?startapp=' + encodeURIComponent(state.referralCode)
+      : window.location.origin + window.location.pathname + '?ref=' + encodeURIComponent(state.referralCode);
+    if (countEl) countEl.textContent = 'Invited players: ' + Number(state.referralCount || 0) + ' · Rewards earned: ' + Number(state.referralRewardCount || 0) + ' × 300 zombies';
+  }
+
   async function initServerSession(){
     if (!SERVER_URL) { window.__depositDebug = 'no-server-url'; loadDepositMemo(); return; }
     try {
       const tg = window.Telegram && window.Telegram.WebApp;
       const initData = tg && tg.initData;
+      const telegramStartParam = tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param;
+      const referralCode = telegramStartParam || new URLSearchParams(window.location.search).get('ref') || '';
       if (!tg) { window.__depositDebug = 'no-telegram-object'; return; }
       if (!initData) { window.__depositDebug = 'empty-initdata'; return; }
       const res = await fetch(SERVER_URL + '/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ initData })
+        body: JSON.stringify({ initData, referralCode })
       });
       if (!res.ok) {
         let msg = 'auth-http-' + res.status;
@@ -772,6 +785,7 @@
       serverSession.online = true;
       window.__depositDebug = 'ok';
       applyServerState(data.state);
+      renderReferralUI(data.state);
       syncWithdrawalStatuses();
     } catch (e) {
       if (!window.__depositDebug) window.__depositDebug = 'fetch-error: ' + (e && e.message);
@@ -869,6 +883,7 @@
       }
     }
     saveStore();
+    renderReferralUI(state);
     if (typeof setPlayerSkin === 'function') setPlayerSkin(store.skin);
     if (typeof renderSkinShop === 'function') renderSkinShop();
     refreshTopUI();
@@ -1148,6 +1163,31 @@
     } catch (e) {
       statusEl.textContent = memo;
       statusEl.className = 'withdraw-status';
+    }
+  });
+
+  document.getElementById('referralCopyBtn').addEventListener('click', async () => {
+    const link = document.getElementById('referralLink').value;
+    if (!link) return;
+    try {
+      await navigator.clipboard.writeText(link);
+      document.getElementById('referralCopyBtn').textContent = 'Copied';
+      setTimeout(() => { document.getElementById('referralCopyBtn').textContent = 'Copy'; }, 1400);
+    } catch (error) {
+      document.getElementById('referralLink').select();
+    }
+  });
+
+  document.getElementById('referralShareBtn').addEventListener('click', async () => {
+    const link = document.getElementById('referralLink').value;
+    if (!link) return;
+    const tg = window.Telegram && window.Telegram.WebApp;
+    if (tg && typeof tg.openTelegramLink === 'function') {
+      tg.openTelegramLink('https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent('Join me in TaxiTron!'));
+    } else if (navigator.share) {
+      await navigator.share({ title:'TaxiTron', text:'Join me in TaxiTron!', url:link });
+    } else {
+      await navigator.clipboard.writeText(link);
     }
   });
 
