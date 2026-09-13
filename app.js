@@ -766,6 +766,26 @@
       : window.location.origin + window.location.pathname + '?ref=' + encodeURIComponent(referralCode);
     if (countEl) countEl.textContent = 'Invited players: ' + Number(state && state.referralCount || 0) + ' · Rewards earned: ' + Number(state && state.referralRewardCount || 0) + ' × 300 zombies';
   }
+
+  let referralSyncInFlight = false;
+  async function syncReferralStatus(){
+    if (!SERVER_URL || !serverSession.online || !serverSession.token || referralSyncInFlight) return;
+    referralSyncInFlight = true;
+    try {
+      const response = await fetch(SERVER_URL + '/api/referrals/status?token=' + encodeURIComponent(serverSession.token));
+      if (!response.ok) return;
+      const data = await response.json();
+      if (data.state) {
+        applyServerState(data.state);
+        renderReferralUI(data.state);
+      }
+    } catch (error) {
+      // The next polling cycle retries after a temporary network failure.
+    } finally {
+      referralSyncInFlight = false;
+    }
+  }
+  setInterval(syncReferralStatus, 5000);
   renderReferralUI();
 
   async function initServerSession(){

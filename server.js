@@ -1103,6 +1103,10 @@ app.get('/api/withdrawals', requireUserFromQuery, (req, res) => {
   res.json({ withdrawals: req.user.withdrawals.slice(-50) });
 });
 
+app.get('/api/referrals/status', requireUserFromQuery, (req, res) => {
+  res.json({ state: publicState(req.user) });
+});
+
 // ---- Tournament score submission (separate from the coin economy) ----
 app.post('/api/submit-score', requireUserFromBody, (req, res) => {
   const user = req.user;
