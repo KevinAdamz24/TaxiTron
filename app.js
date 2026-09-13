@@ -204,6 +204,7 @@
     taskChannelRewardClaimed: localStorage.getItem('cr3d_taskChannelRewardClaimed') === '1',
     attemptsLeft: localStorage.getItem('cr3d_attemptsLeft') !== null ? parseInt(localStorage.getItem('cr3d_attemptsLeft'), 10) : 10,
     attemptsResetAt: localStorage.getItem('cr3d_attemptsResetAt') ? parseInt(localStorage.getItem('cr3d_attemptsResetAt'), 10) : null,
+    attemptsResetDay: localStorage.getItem('cr3d_attemptsResetDay') || '',
     withdrawals: JSON.parse(localStorage.getItem('cr3d_withdrawals') || '[]')
   };
   function accountStorageKey(name){
@@ -213,10 +214,12 @@
   function loadAccountAttempts(){
     const attemptsKey = accountStorageKey('cr3d_attemptsLeft');
     const resetKey = accountStorageKey('cr3d_attemptsResetAt');
+    const resetDayKey = accountStorageKey('cr3d_attemptsResetDay');
     const savedAttempts = localStorage.getItem(attemptsKey);
     const savedReset = localStorage.getItem(resetKey);
     store.attemptsLeft = savedAttempts !== null ? parseInt(savedAttempts, 10) : 10;
     store.attemptsResetAt = savedReset ? parseInt(savedReset, 10) : null;
+    store.attemptsResetDay = localStorage.getItem(resetDayKey) || '';
   }
   if (localStorage.getItem('cr3d_serverUid')) loadAccountAttempts();
   function saveStore(){
@@ -237,6 +240,9 @@
     const attemptsResetKey = accountStorageKey('cr3d_attemptsResetAt');
     if (store.attemptsResetAt) localStorage.setItem(attemptsResetKey, store.attemptsResetAt);
     else localStorage.removeItem(attemptsResetKey);
+    const attemptsResetDayKey = accountStorageKey('cr3d_attemptsResetDay');
+    if (store.attemptsResetDay) localStorage.setItem(attemptsResetDayKey, store.attemptsResetDay);
+    else localStorage.removeItem(attemptsResetDayKey);
     localStorage.setItem('cr3d_withdrawals', JSON.stringify(store.withdrawals));
   }
 
@@ -254,6 +260,7 @@
     if (!dailyEarningsComplete() || store.attemptsResetAt) return;
     store.attemptsLeft = 0;
     store.attemptsResetAt = getAttemptResetAt();
+    store.attemptsResetDay = store.level >= 2 ? todayStr() : '';
     saveStore();
   }
 
@@ -330,6 +337,14 @@
     const maxAttempts = getMaxAttempts();
     const now = Date.now();
     let hasValidResetAt = Number.isFinite(store.attemptsResetAt) && store.attemptsResetAt > 0;
+    const currentDay = todayStr();
+    if (store.level >= 2 && store.attemptsLeft === 0 && store.attemptsResetDay !== currentDay) {
+      store.attemptsLeft = maxAttempts;
+      store.attemptsResetAt = null;
+      store.attemptsResetDay = '';
+      saveStore();
+      return;
+    }
     if (store.level >= 2 && store.attemptsLeft === 0) {
       const midnight = nextBerlinMidnight();
       if (!hasValidResetAt || store.attemptsResetAt > midnight) {
@@ -362,7 +377,10 @@
     ensureAttempts();
     if (store.attemptsLeft <= 0) return false;
     store.attemptsLeft -= 1;
-    if (store.attemptsLeft === 0) store.attemptsResetAt = getAttemptResetAt();
+    if (store.attemptsLeft === 0) {
+      store.attemptsResetAt = getAttemptResetAt();
+      store.attemptsResetDay = store.level >= 2 ? todayStr() : '';
+    }
     saveStore();
     return true;
   }
