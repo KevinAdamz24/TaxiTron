@@ -1112,11 +1112,18 @@ app.get('/api/referrals/status', requireUserFromQuery, (req, res) => {
 
 app.post('/api/referrals/claim', requireUserFromBody, (req, res) => {
   const rewardZombies = Number(req.user.referralPendingZombies || 0);
+  res.json({ rewardZombies, state: publicState(req.user) });
+});
+
+app.post('/api/referrals/exchange', requireUserFromBody, (req, res) => {
+  const rewardZombies = Number(req.user.referralPendingZombies || 0);
+  const coinsGained = rewardZombies;
   if (rewardZombies > 0) {
+    req.user.coins += coinsGained;
     req.user.referralPendingZombies = 0;
     persist();
   }
-  res.json({ rewardZombies, state: publicState(req.user) });
+  res.json({ exchangedZombies: rewardZombies, coinsGained, state: publicState(req.user) });
 });
 
 // ---- Tournament score submission (separate from the coin economy) ----

@@ -771,6 +771,11 @@
       ? 'https://t.me/' + configuredBot + '?startapp=' + encodeURIComponent(referralCode)
       : window.location.origin + window.location.pathname + '?ref=' + encodeURIComponent(referralCode);
     if (countEl) countEl.textContent = 'Invited players: ' + Number(state && state.referralCount || 0) + ' · Rewards earned: ' + Number(state && state.referralRewardCount || 0) + ' × 300 zombies';
+    const pending = Number(state && state.referralPendingZombies || 0);
+    const pendingEl = document.getElementById('referralPending');
+    const exchangeBtn = document.getElementById('referralExchangeBtn');
+    if (pendingEl) pendingEl.textContent = 'Referral zombies ready: ' + pending + ' · Exchange rate: 1:1';
+    if (exchangeBtn) exchangeBtn.disabled = pending <= 0 || !serverSession.online;
   }
 
   let referralSyncInFlight = false;
@@ -785,24 +790,6 @@
         applyServerState(data.state);
         renderReferralUI(data.state);
       }
-      const rewardResponse = await fetch(SERVER_URL + '/api/referrals/claim', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({ token:serverSession.token })
-      });
-      if (rewardResponse.ok) {
-        const rewardData = await rewardResponse.json();
-        const rewardZombies = Number(rewardData.rewardZombies || 0);
-        if (rewardZombies > 0) {
-          lastPersonScore += rewardZombies;
-          savePending();
-          refreshTopUI();
-        }
-        if (rewardData.state) {
-          applyServerState(rewardData.state);
-          renderReferralUI(rewardData.state);
-        }
-      }
     } catch (error) {
       // The next polling cycle retries after a temporary network failure.
     } finally {
@@ -811,6 +798,26 @@
   }
   setInterval(syncReferralStatus, 5000);
   renderReferralUI();
+
+  document.getElementById('referralExchangeBtn').addEventListener('click', async () => {
+    if (!serverSession.online || !serverSession.token) return;
+    const button = document.getElementById('referralExchangeBtn');
+    button.disabled = true;
+    try {
+      const response = await fetch(SERVER_URL + '/api/referrals/exchange', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({ token:serverSession.token })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'referral-exchange-failed');
+      applyServerState(data.state);
+      renderReferralUI(data.state);
+      refreshTopUI();
+    } catch (error) {
+      renderReferralUI({ referralPendingZombies: 0 });
+    }
+  });
 
   async function initServerSession(){
     if (!SERVER_URL) { window.__depositDebug = 'no-server-url'; renderReferralUI(); loadDepositMemo(); return; }
