@@ -489,7 +489,13 @@
       item.className = 'skin-item' + (selected ? ' selected' : '') + (def.status==='soon' ? ' soon' : '');
       item.dataset.skin = def.key;
 
-      const img = (typeof SKIN_IMAGES !== 'undefined' && SKIN_IMAGES[def.key]) ? SKIN_IMAGES[def.key] : '';
+      const shopImageOverrides = {
+        yellow:'sprites/newlvl1.jpg',
+        red:'sprites/newlvl2.jpg',
+        white:'sprites/newlvl3.jpg',
+        green:'sprites/newlvl4.jpg'
+      };
+      const img = shopImageOverrides[def.key] || ((typeof SKIN_IMAGES !== 'undefined' && SKIN_IMAGES[def.key]) ? SKIN_IMAGES[def.key] : '');
 
       let btnHtml;
       if (def.status === 'soon'){
