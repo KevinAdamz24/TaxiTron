@@ -682,7 +682,7 @@ body{font-family:Segoe UI,Arial,sans-serif;background:#101018;color:#f5f2ff;max-
 <script>
 const secret=()=>document.getElementById('secret').value;
 const status=(text)=>document.getElementById('status').textContent=text;
-async function load(){const s=secret();if(!s){status('ADMIN_SECRET eingeben.');return}status('Spieler werden geladen...');const r=await fetch('/admin/players',{headers:{'x-admin-secret':s}});const d=await r.json();if(!r.ok){status(d.error||'Request failed');return}document.getElementById('stats').innerHTML='<div class="stat"><span>Registrierte Spieler</span><b>'+d.totalUsers+'</b></div><div class="stat"><span>Spieler mit Einzahlung</span><b>'+d.depositUsers+'</b></div><div class="stat"><span>TON gesamt</span><b>'+Number(d.totalTon).toFixed(6)+'</b></div>';const list=document.getElementById('list');list.innerHTML='<div class="row"><b>Spieler</b><b>TON-Guthaben</b><b>Coins</b><b>Level</b><b>Einzahlungen</b><b>Runs</b></div>';d.players.forEach(p=>{const row=document.createElement('div');row.className='row';row.innerHTML='<span>'+p.name+'<br><span class="muted">UID '+p.uid+'</span></span><span>'+Number(p.ton).toFixed(6)+' TON</span><span>'+p.coins+'</span><span>'+p.level+'</span><span>'+p.depositCount+'</span><span>'+p.runs+'</span>';list.appendChild(row)});status(d.totalUsers+' Spieler geladen.')}
+async function load(){const s=secret();if(!s){status('ADMIN_SECRET eingeben.');return}status('Spieler werden geladen...');const r=await fetch('/admin/players',{headers:{'x-admin-secret':s}});const d=await r.json();if(!r.ok){status(d.error||'Request failed');return}document.getElementById('stats').innerHTML='<div class="stat"><span>Registrierte Spieler</span><b>'+d.totalUsers+'</b></div><div class="stat"><span>Spieler mit Einzahlung</span><b>'+d.depositUsers+'</b></div><div class="stat"><span>TON gesamt</span><b>'+Number(d.totalTon).toFixed(6)+'</b></div><div class="stat"><span>Einladungen gesamt</span><b>'+d.totalReferrals+'</b></div><div class="stat"><span>Referral-Belohnungen</span><b>'+d.totalReferralRewards+' x 300</b></div><div class="stat"><span>Referral-Zombies</span><b>'+d.totalReferralRewardZombies+'</b></div>';const list=document.getElementById('list');list.innerHTML='<div class="row"><b>Spieler</b><b>TON-Guthaben</b><b>Coins</b><b>Level</b><b>Einzahlungen</b><b>Runs</b><b>Referral</b></div>';d.players.forEach(p=>{const row=document.createElement('div');row.className='row';row.innerHTML='<span>'+p.name+'<br><span class="muted">UID '+p.uid+'</span></span><span>'+Number(p.ton).toFixed(6)+' TON</span><span>'+p.coins+'</span><span>'+p.level+'</span><span>'+p.depositCount+'</span><span>'+p.runs+'</span><span>'+p.referralCount+' eingeladen<br>'+p.referralRewardCount+' Belohnungen · '+p.referralRewardZombies+' Zombies<br>'+p.referralLink+'</span>';list.appendChild(row)});status(d.totalUsers+' Spieler geladen.')}
 async function loadWithdrawals(){const s=secret();if(!s){status('ADMIN_SECRET eingeben.');return}status('Auszahlungen werden geladen...');const r=await fetch('/admin/withdrawals?status=pending',{headers:{'x-admin-secret':s}});const d=await r.json();if(!r.ok){status(d.error||'Request failed');return}const list=document.getElementById('list');list.innerHTML=d.withdrawals.length?'':'Keine offenen Auszahlungen.';d.withdrawals.forEach(w=>{const row=document.createElement('div');row.className='row';row.innerHTML='<span>'+w.name+'<br><span class="muted">UID '+w.uid+'</span></span><span>'+w.amount+' TON</span><span>'+w.address+'</span><span class="muted">'+new Date(w.ts).toLocaleString()+'</span><button>Erledigt</button>';row.querySelector('button').onclick=async()=>{const rr=await fetch('/admin/withdrawals/complete',{method:'POST',headers:{'Content-Type':'application/json','x-admin-secret':s},body:JSON.stringify({uid:w.uid,ts:w.ts})});if(rr.ok)loadWithdrawals();else status((await rr.json()).error||'Request failed')};list.appendChild(row)})}
 document.getElementById('load').onclick=load;
 document.getElementById('loadWithdrawals').onclick=loadWithdrawals;
@@ -1177,11 +1177,18 @@ app.get('/admin/players', requireAdmin, (req, res) => {
     level: Number(user.level) || 1,
     runs: Number(user.runs) || 0,
     depositCount: Array.isArray(user.depositTxs) ? user.depositTxs.length : 0,
+    referralCount: Number(user.referralCount) || 0,
+    referralRewardCount: Number(user.referralRewardCount) || 0,
+    referralRewardZombies: (Number(user.referralRewardCount) || 0) * 300,
+    referralLink: 'https://t.me/TaxiTronBot?startapp=' + encodeURIComponent(referralCodeFor(user.id)),
   })).sort((a, b) => b.ton - a.ton);
   res.json({
     totalUsers: players.length,
     depositUsers: players.filter((player) => player.depositCount > 0).length,
     totalTon: players.reduce((sum, player) => sum + player.ton, 0),
+    totalReferrals: players.reduce((sum, player) => sum + player.referralCount, 0),
+    totalReferralRewards: players.reduce((sum, player) => sum + player.referralRewardCount, 0),
+    totalReferralRewardZombies: players.reduce((sum, player) => sum + player.referralRewardZombies, 0),
     players,
   });
 });
