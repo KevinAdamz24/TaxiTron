@@ -214,6 +214,7 @@ function newUser(id, name) {
     runs: 0,
     level: 1,
     ownedSkins: ['yellow'],
+    skinRewards: {},
     attemptsLeft: 10,
     attemptsResetAt: null,
     attemptResetVersion: 0,
@@ -295,6 +296,13 @@ function publicState(user) {
   if (ownedSkins.indexOf('yellow') === -1) ownedSkins.unshift('yellow');
   user.ownedSkins = ownedSkins;
   user.level = ownedSkins.indexOf('green') !== -1 ? 4 : ownedSkins.indexOf('white') !== -1 ? 3 : ownedSkins.indexOf('red') !== -1 ? 2 : 1;
+  if (!user.skinRewards || typeof user.skinRewards !== 'object') user.skinRewards = {};
+  const rewardDays = { red:30, white:30, green:30 };
+  Object.keys(rewardDays).forEach((key) => {
+    if (ownedSkins.includes(key) && !user.skinRewards[key]) {
+      user.skinRewards[key] = { remainingDays: rewardDays[key], lastCreditDate: berlinDayKey() };
+    }
+  });
   return {
     uid: String(user.id),
     coins: user.coins,
@@ -304,6 +312,7 @@ function publicState(user) {
     runs: user.runs,
     level: user.level,
     ownedSkins,
+    skinRewards: user.skinRewards,
     referralCode: referralCodeFor(user.id),
     referralCount: Number(user.referralCount || 0),
     referralRewardCount: Number(user.referralRewardCount || 0),
@@ -739,6 +748,8 @@ app.post('/api/buy-skin', requireUserFromBody, (req, res) => {
   user.ton -= price;
   user.ownedSkins.push(key);
   user.level = Math.max(user.level || 1, levels[key]);
+  if (!user.skinRewards || typeof user.skinRewards !== 'object') user.skinRewards = {};
+  user.skinRewards[key] = { remainingDays: 30, lastCreditDate: berlinDayKey() };
   persist();
   res.json({ state: publicState(user) });
 });
