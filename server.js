@@ -224,7 +224,22 @@ function newUser(id, name) {
     tournamentWeekKey: '',
     depositTxs: [],
     withdrawals: [],
+    referralCount: 0,
+    referralRewardCount: 0,
+    referredBy: null,
+    referralRewardClaimed: false,
   };
+}
+
+function referralCodeFor(uid) { return 'ref_' + String(uid); }
+
+function applyReferral(user, referralCode) {
+  if (!referralCode || user.referredBy || String(referralCode) === referralCodeFor(user.id)) return;
+  const inviterId = String(referralCode).replace(/^ref_/, '');
+  const inviter = users[inviterId];
+  if (!inviter || String(inviter.id) === String(user.id)) return;
+  user.referredBy = inviterId;
+  inviter.referralCount = Number(inviter.referralCount || 0) + 1;
 }
 
 function getOrCreateUser(id, name) {
@@ -288,6 +303,9 @@ function publicState(user) {
     runs: user.runs,
     level: user.level,
     ownedSkins,
+    referralCode: referralCodeFor(user.id),
+    referralCount: Number(user.referralCount || 0),
+    referralRewardCount: Number(user.referralRewardCount || 0),
     attemptResetVersion: user.attemptResetVersion || 0,
     taskChannelRewardClaimed: user.taskChannelRewardClaimed === true,
   };
@@ -681,11 +699,13 @@ app.get('/api/health', (req, res) => res.json({
 
 // ---- Auth ----
 app.post('/api/auth', (req, res) => {
-  const { initData } = req.body || {};
+  const { initData, referralCode } = req.body || {};
   const result = verifyInitData(initData);
   if (!result.ok) return res.status(401).json({ error: result.error });
 
+  const existed = !!users[String(result.id)];
   const user = getOrCreateUser(result.id, result.name);
+  if (!existed) applyReferral(user, referralCode);
   user.lastSeenAt = Date.now();
   ensureDailyReset(user);
   ensureTournamentReset(user);
@@ -741,8 +761,18 @@ app.post('/api/tasks/channel-claim', requireUserFromBody, async (req, res) => {
     if (!joined) return res.status(403).json({ error: 'channel-membership-required', joined: false });
 
     user.taskChannelRewardClaimed = true;
+    let referralReward = 0;
+    if (user.referredBy && !user.referralRewardClaimed) {
+      const inviter = users[String(user.referredBy)];
+      if (inviter) {
+        inviter.coins += 300;
+        inviter.referralRewardCount = Number(inviter.referralRewardCount || 0) + 1;
+        referralReward = 300;
+      }
+      user.referralRewardClaimed = true;
+    }
     persist();
-    res.json({ claimed: true, joined: true, rewardZombies: 500, state: publicState(user) });
+    res.json({ claimed: true, joined: true, rewardZombies: 500, referralReward, state: publicState(user) });
   } catch (e) {
     res.status(502).json({ error: 'telegram-membership-check-failed' });
   }
