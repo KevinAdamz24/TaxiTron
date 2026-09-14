@@ -73,7 +73,7 @@ const STORAGE_PERSISTENT = !ON_RAILWAY || (
 
 // Must mirror the client's economy constants (index.html) exactly.
 const COINS_PER_ZOMBIE = 1;
-const LEVEL_TWO_COINS_PER_ZOMBIE = 7;
+const LEVEL_TWO_COINS_PER_ZOMBIE = 3;
 const LEVEL_THREE_COINS_PER_ZOMBIE = 20;
 const LEVEL_FOUR_COINS_PER_ZOMBIE = 100;
 const COINS_PER_BLOCK = 10000;
