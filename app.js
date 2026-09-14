@@ -517,17 +517,24 @@
     { level:4, key:'green',  nameKey:'skinNameGreen',  price:10, status:'buy',  dailyReward:0.66, rewardDays:30 },
     { level:5, key:'black',  nameKey:'skinNameBlack',  price:0,  status:'soon', dailyReward:0,    rewardDays:0  }
   ];
-  const highestOwnedLevel = SKIN_LEVELS.reduce((highest, def) =>
-    store.ownedSkins.indexOf(def.key) !== -1 ? Math.max(highest, def.level) : highest, 1);
-  if (highestOwnedLevel > store.level){
-    store.level = highestOwnedLevel;
-    if (store.level >= 2){
-      store.skin = highestOwnedLevel >= 4 ? 'green' : highestOwnedLevel >= 3 ? 'white' : 'red';
+  function highestOwnedSkin(){
+    return SKIN_LEVELS.reduce((highest, def) =>
+      store.ownedSkins.indexOf(def.key) !== -1 && def.level > highest.level ? def : highest,
+      SKIN_LEVELS[0]);
+  }
+  function enforceOwnedSkinSelection(){
+    const selected = SKIN_LEVELS.find(def => def.key === store.skin);
+    const ownsPremiumSkin = store.ownedSkins.some(key => SKIN_LEVELS.some(def => def.key === key && def.level >= 2));
+    if (!selected || store.ownedSkins.indexOf(selected.key) === -1 || (ownsPremiumSkin && selected.level === 1)) {
+      const fallback = highestOwnedSkin();
+      store.skin = fallback.key;
+      store.level = Math.max(store.level, fallback.level);
+    } else {
+      store.level = Math.max(store.level, selected.level);
     }
+    return store.skin;
   }
-  if (store.ownedSkins.indexOf(store.skin) === -1){
-    store.skin = store.ownedSkins.indexOf('green') !== -1 ? 'green' : store.ownedSkins.indexOf('white') !== -1 ? 'white' : store.ownedSkins.indexOf('red') !== -1 ? 'red' : 'yellow';
-  }
+  enforceOwnedSkinSelection();
   function hasLevelTwo(){ return store.ownedSkins.indexOf('red') !== -1; }
   function hasLevelThree(){ return store.ownedSkins.indexOf('white') !== -1; }
   function hasLevelFour(){ return store.ownedSkins.indexOf('green') !== -1; }
@@ -1024,6 +1031,7 @@
     if (state.skinRewards && typeof state.skinRewards === 'object') {
       store.skinRewards = JSON.parse(JSON.stringify(state.skinRewards));
     }
+    enforceOwnedSkinSelection();
     if (!store.pointsTodayByLevel || typeof store.pointsTodayByLevel !== 'object') store.pointsTodayByLevel = {};
     const activeLevelForProgressFinal = activeAttemptLevel();
     ensureLevelTodayState(activeLevelForProgressFinal);
