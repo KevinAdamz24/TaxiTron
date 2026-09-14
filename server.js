@@ -225,6 +225,7 @@ function newUser(id, name) {
     tournamentWeekKey: '',
     depositTxs: [],
     withdrawals: [],
+    lastWithdrawalDay: '',
     referralCount: 0,
     referralRewardCount: 0,
     referralPendingZombies: 0,
@@ -313,6 +314,7 @@ function publicState(user) {
     coins: user.coins,
     ton: user.ton,
     tonToday: user.tonToday,
+    lastWithdrawalDay: user.lastWithdrawalDay || '',
     best: user.best,
     runs: user.runs,
     level: user.level,
@@ -326,6 +328,19 @@ function publicState(user) {
     taskChannelRewardClaimed: user.taskChannelRewardClaimed === true,
     referralRewardZombies: (Number(user.referralRewardCount) || 0) * 300,
   };
+}
+
+function hasWithdrawnToday(user) {
+  if (!user) return false;
+  const todayKey = berlinDayKey();
+  if (user.lastWithdrawalDay === todayKey) return true;
+  if (!Array.isArray(user.withdrawals)) return false;
+  return user.withdrawals.some((w) => {
+    if (!w || !w.ts) return false;
+    const d = new Date(Number(w.ts));
+    if (Number.isNaN(d.getTime())) return false;
+    return berlinDayKey(d) === todayKey;
+  });
 }
 
 const RPS_CHOICES = new Set(['rock', 'paper', 'scissors']);
@@ -1108,8 +1123,10 @@ app.post('/api/withdraw', requireUserFromBody, (req, res) => {
   if (!isPlausibleTonAddress(address)) return res.status(400).json({ error: 'invalid-address' });
   if (!amt || amt < MIN_WITHDRAW) return res.status(400).json({ error: 'amount-too-small' });
   if (amt > user.ton) return res.status(400).json({ error: 'insufficient-funds' });
+  if (hasWithdrawnToday(user)) return res.status(409).json({ error: 'already-withdrawn-today' });
 
   user.ton -= amt;
+  user.lastWithdrawalDay = berlinDayKey();
   const withdrawal = { ts: Date.now(), address: String(address).trim(), amount: amt, status: 'pending' };
   user.withdrawals.push(withdrawal);
   if (user.withdrawals.length > 200) user.withdrawals = user.withdrawals.slice(-200);

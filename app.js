@@ -207,7 +207,8 @@
     attemptsResetAt: localStorage.getItem('cr3d_attemptsResetAt') ? parseInt(localStorage.getItem('cr3d_attemptsResetAt'), 10) : null,
     attemptsResetDay: localStorage.getItem('cr3d_attemptsResetDay') || '',
     attemptsByLevel: {},
-    withdrawals: JSON.parse(localStorage.getItem('cr3d_withdrawals') || '[]')
+    withdrawals: JSON.parse(localStorage.getItem('cr3d_withdrawals') || '[]'),
+    lastWithdrawalDay: localStorage.getItem('cr3d_lastWithdrawalDay') || ''
   };
   function accountStorageKey(name){
     const uid = localStorage.getItem('cr3d_serverUid');
@@ -260,6 +261,7 @@
     save('cr3d_skinRewards', JSON.stringify(store.skinRewards));
     save('cr3d_taskChannelRewardClaimed', store.taskChannelRewardClaimed ? '1' : '0');
     localStorage.setItem(accountStorageKey('cr3d_attemptsLeft'), store.attemptsLeft);
+    localStorage.setItem(accountStorageKey('cr3d_lastWithdrawalDay'), store.lastWithdrawalDay || '');
     const attemptsResetKey = accountStorageKey('cr3d_attemptsResetAt');
     if (store.attemptsResetAt) localStorage.setItem(attemptsResetKey, store.attemptsResetAt);
     else localStorage.removeItem(attemptsResetKey);
@@ -692,10 +694,6 @@
       });
     });
   }
-  setInterval(() => {
-    if (document.getElementById('screen-shop')?.classList.contains('active')) renderSkinShop();
-  }, 1000);
-
   /* ================= TOURNAMENT ================= */
   async function fetchLeaderboard(){
     if (!SERVER_URL) return null;
@@ -996,6 +994,7 @@
     }
     store.coins = state.coins;
     store.points = state.ton;
+    if (state.lastWithdrawalDay) store.lastWithdrawalDay = state.lastWithdrawalDay;
     if (!store.pointsTodayByLevel || typeof store.pointsTodayByLevel !== 'object') store.pointsTodayByLevel = {};
     const activeLevelForProgress = activeAttemptLevel();
     ensureLevelTodayState(activeLevelForProgress);
@@ -1148,9 +1147,46 @@
 
   /* ================= WITHDRAW (TON) ================= */
   const MIN_WITHDRAW = 1;
+  function getTodayWithdrawalKey(){
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Europe/Berlin',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).formatToParts(new Date());
+    const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+    return values.year + '-' + values.month + '-' + values.day;
+  }
+  function hasWithdrawnToday(){
+    const todayKey = getTodayWithdrawalKey();
+    if (store.lastWithdrawalDay === todayKey) return true;
+    if (Array.isArray(store.withdrawals)) {
+      return store.withdrawals.some((w) => {
+        if (!w || !w.ts) return false;
+        const d = new Date(Number(w.ts));
+        if (Number.isNaN(d.getTime())) return false;
+        const parts = new Intl.DateTimeFormat('en-CA', {
+          timeZone: 'Europe/Berlin',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit'
+        }).formatToParts(d);
+        const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+        return values.year + '-' + values.month + '-' + values.day === todayKey;
+      });
+    }
+    return false;
+  }
   function renderWithdrawUI(){
     const balEl = document.getElementById('withdrawBalance');
     if (balEl) balEl.textContent = store.points.toFixed(6);
+    const btn = document.getElementById('withdrawBtn');
+    const alreadyDone = hasWithdrawnToday();
+    if (btn) btn.disabled = alreadyDone || store.points < MIN_WITHDRAW;
+    const statusEl = document.getElementById('withdrawStatus');
+    if (alreadyDone && statusEl && !statusEl.textContent) {
+      setWithdrawStatus('Already withdrawn today. You can request another withdrawal tomorrow.', 'error');
+    }
     const histEl = document.getElementById('withdrawHistory');
     if (!histEl) return;
     histEl.innerHTML = '';
@@ -1181,6 +1217,11 @@
     const amount = parseFloat(amountInput.value);
     const btn = document.getElementById('withdrawBtn');
 
+    if (hasWithdrawnToday()){
+      setWithdrawStatus('You already withdrew today. You can request another withdrawal tomorrow.', 'error');
+      btn.disabled = true;
+      return;
+    }
     if (!isPlausibleTonAddress(address)){
       setWithdrawStatus(t('withdrawErrAddress'), 'error');
       return;
@@ -1218,14 +1259,17 @@
     if (!handledByServer){
       store.points -= amount;
     }
+    const dayKey = getTodayWithdrawalKey();
+    store.lastWithdrawalDay = dayKey;
     // Use the server's own withdrawal record (same ts the admin panel uses)
     // whenever we have one, so later status syncs can match it up.
     store.withdrawals.push(serverWithdrawal || { address, amount, status: 'pending', ts: Date.now() });
     saveStore();
     setWithdrawStatus(t('withdrawSuccess'), 'success');
+    renderWithdrawUI();
     amountInput.value = '';
     refreshTopUI();
-    btn.disabled = false;
+    btn.disabled = true;
   }
   document.getElementById('withdrawBtn').addEventListener('click', requestWithdraw);
 
