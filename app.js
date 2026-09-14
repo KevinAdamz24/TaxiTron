@@ -197,6 +197,7 @@
     level: parseInt(localStorage.getItem('cr3d_level') || '1', 10),
     points: parseFloat(localStorage.getItem('cr3d_points') || '0'),
     pointsToday: parseFloat(localStorage.getItem('cr3d_pointsToday') || '0'),
+    pointsTodayByLevel: {},
     pointsDate: localStorage.getItem('cr3d_pointsDate') || '',
     skin: localStorage.getItem('cr3d_skin') || 'yellow',
     ownedSkins: JSON.parse(localStorage.getItem('cr3d_ownedSkins') || '["yellow"]'),
@@ -217,12 +218,16 @@
     const resetKey = accountStorageKey('cr3d_attemptsResetAt');
     const resetDayKey = accountStorageKey('cr3d_attemptsResetDay');
     const levelsKey = accountStorageKey('cr3d_attemptsByLevel');
+    const dailyKey = accountStorageKey('cr3d_pointsTodayByLevel');
     const savedAttempts = localStorage.getItem(attemptsKey);
     const savedReset = localStorage.getItem(resetKey);
     store.attemptsLeft = savedAttempts !== null ? parseInt(savedAttempts, 10) : 10;
     store.attemptsResetAt = savedReset ? parseInt(savedReset, 10) : null;
     store.attemptsResetDay = localStorage.getItem(resetDayKey) || '';
     try { store.attemptsByLevel = JSON.parse(localStorage.getItem(levelsKey) || '{}') || {}; } catch (error) { store.attemptsByLevel = {}; }
+    try { store.pointsTodayByLevel = JSON.parse(localStorage.getItem(dailyKey) || '{}') || {}; } catch (error) { store.pointsTodayByLevel = {}; }
+    if (!store.pointsTodayByLevel || typeof store.pointsTodayByLevel !== 'object') store.pointsTodayByLevel = {};
+    store.pointsToday = Object.values(store.pointsTodayByLevel).reduce((sum, value) => sum + Number(value || 0), 0);
     loadActiveAttemptState();
   }
   if (localStorage.getItem('cr3d_serverUid')) loadAccountAttempts();
@@ -236,6 +241,8 @@
     save('cr3d_points', store.points);
     save('cr3d_pointsToday', store.pointsToday);
     save('cr3d_pointsDate', store.pointsDate);
+    const levelsDailyKey = accountStorageKey('cr3d_pointsTodayByLevel');
+    localStorage.setItem(levelsDailyKey, JSON.stringify(store.pointsTodayByLevel || {}));
     save('cr3d_skin', store.skin);
     save('cr3d_ownedSkins', JSON.stringify(store.ownedSkins));
     save('cr3d_skinRewards', JSON.stringify(store.skinRewards));
@@ -261,8 +268,19 @@
   const DAILY_PTS_CAP_LEVEL_TWO = 0.067;
   const DAILY_PTS_CAP_LEVEL_THREE = 0.2;
   const DAILY_PTS_CAP_LEVEL_FOUR = 0.66;
-  function getDailyPtsCap(){ const level = activeAttemptLevel(); return level >= 4 ? DAILY_PTS_CAP_LEVEL_FOUR : level >= 3 ? DAILY_PTS_CAP_LEVEL_THREE : level >= 2 ? DAILY_PTS_CAP_LEVEL_TWO : DAILY_PTS_CAP_LEVEL_ONE; }
-  function dailyEarningsComplete(){ return activeAttemptLevel() >= 2 && store.pointsToday >= getDailyPtsCap() - 1e-9; }
+  function getLevelDailyPtsCap(level){
+    const l = Number(level || activeAttemptLevel());
+    return l >= 4 ? DAILY_PTS_CAP_LEVEL_FOUR : l >= 3 ? DAILY_PTS_CAP_LEVEL_THREE : l >= 2 ? DAILY_PTS_CAP_LEVEL_TWO : DAILY_PTS_CAP_LEVEL_ONE;
+  }
+  function getCurrentLevelTodayPoints(){
+    if (!store.pointsTodayByLevel || typeof store.pointsTodayByLevel !== 'object') store.pointsTodayByLevel = {};
+    const level = activeAttemptLevel();
+    const value = Number(store.pointsTodayByLevel[level] || 0);
+    store.pointsTodayByLevel[level] = value;
+    return value;
+  }
+  function getDailyPtsCap(){ return getLevelDailyPtsCap(activeAttemptLevel()); }
+  function dailyEarningsComplete(){ return activeAttemptLevel() >= 2 && getCurrentLevelTodayPoints() >= getDailyPtsCap() - 1e-9; }
 
   function todayStr(){
     const parts = new Intl.DateTimeFormat('en-CA', {
@@ -283,10 +301,13 @@
       const def = SKIN_LEVELS.find(d => d.key === key);
       if (!def || !def.dailyReward || r.remainingDays <= 0) return;
       if (r.lastCreditDate !== t2){
-        const allowed = Math.max(0, getDailyPtsCap() - store.pointsToday);
+        const level = def.level;
+        const currentValue = Number(store.pointsTodayByLevel[level] || 0);
+        const allowed = Math.max(0, getLevelDailyPtsCap(level) - currentValue);
         const reward = Math.min(def.dailyReward, allowed);
         store.points += reward;
-        store.pointsToday += reward;
+        store.pointsTodayByLevel[level] = currentValue + reward;
+        store.pointsToday = Object.values(store.pointsTodayByLevel).reduce((sum, value) => sum + Number(value || 0), 0);
         if (reward > 0) r.remainingDays -= 1;
         r.lastCreditDate = t2;
         changed = true;
@@ -299,6 +320,7 @@
     if (store.pointsDate !== t){
       store.pointsDate = t;
       store.pointsToday = 0;
+      store.pointsTodayByLevel = {};
       saveStore();
     }
     creditSkinRewards();
@@ -310,11 +332,14 @@
   }, 30000);
   function addPointsFromCoins(coinsAdded){
     ensureDailyReset();
+    const level = activeAttemptLevel();
     const rawGain = (coinsAdded / COINS_PER_BLOCK) * PTS_PER_BLOCK * LEVEL_MULTIPLIER;
-    const allowed = Math.max(0, getDailyPtsCap() - store.pointsToday);
+    const todayLevelPoints = Number(store.pointsTodayByLevel[level] || 0);
+    const allowed = Math.max(0, getLevelDailyPtsCap(level) - todayLevelPoints);
     const gain = Math.min(rawGain, allowed);
     store.points += gain;
-    store.pointsToday += gain;
+    store.pointsTodayByLevel[level] = todayLevelPoints + gain;
+    store.pointsToday = Object.values(store.pointsTodayByLevel).reduce((sum, value) => sum + Number(value || 0), 0);
     saveStore();
   }
 
@@ -748,12 +773,13 @@
 
     document.getElementById('balanceValue').textContent = store.points.toFixed(6);
     const dailyCap = getDailyPtsCap();
-    const pct = Math.min(100, Math.round((store.pointsToday / dailyCap) * 100));
+    const currentLevelToday = getCurrentLevelTodayPoints();
+    const pct = Math.min(100, Math.round((currentLevelToday / dailyCap) * 100));
     document.getElementById('capPercent').textContent = pct + '%';
     document.getElementById('capFill').style.width = pct + '%';
     document.getElementById('capSub').innerHTML =
-      store.pointsToday.toFixed(6) + ' / ' + dailyCap.toFixed(6) + ' TON ' +
-      t('today') + ' · ' + t('statLevel') + ' ' + store.level;
+      currentLevelToday.toFixed(6) + ' / ' + dailyCap.toFixed(6) + ' TON ' +
+      t('today') + ' · ' + t('statLevel') + ' ' + activeAttemptLevel();
 
     refreshShopUI();
     renderSkinShop();
@@ -964,7 +990,7 @@
     if (typeof state.level === 'number') store.level = state.level;
     if (Array.isArray(state.ownedSkins)){
       store.ownedSkins = state.ownedSkins.slice();
-      if (store.ownedSkins.indexOf(store.skin) === -1){
+      if (store.ownedSkins.indexOf(store.skin) === -1 && !localStorage.getItem('cr3d_skin')) {
         store.skin = store.ownedSkins.indexOf('green') !== -1 ? 'green' : store.ownedSkins.indexOf('white') !== -1 ? 'white' : store.ownedSkins.indexOf('red') !== -1 ? 'red' : 'yellow';
       }
     }
