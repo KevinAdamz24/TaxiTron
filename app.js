@@ -469,13 +469,16 @@
     ensureAttempts();
     const maxAttempts = getMaxAttempts();
     const available = store.attemptsLeft > 0;
+    const rewardComplete = dailyEarningsComplete();
     if (el){
       el.style.display = 'block';
-      el.textContent = available
+      el.textContent = rewardComplete
+        ? 'Today reward complete · Next reset in ' + formatCountdown(nextBerlinMidnight() - Date.now())
+        : available
         ? store.attemptsLeft + ' / ' + maxAttempts + ' tries left'
         : 'Next try in ' + formatCountdown(store.attemptsResetAt - Date.now());
     }
-      playButtons.forEach(btn => { btn.disabled = !available; });
+      playButtons.forEach(btn => { btn.disabled = !available || rewardComplete; });
   }
   setInterval(renderAttemptsUI, 1000);
 
@@ -1002,6 +1005,9 @@
     if (state.lastWithdrawalDay) store.lastWithdrawalDay = state.lastWithdrawalDay;
     if (!store.pointsTodayByLevel || typeof store.pointsTodayByLevel !== 'object') store.pointsTodayByLevel = {};
     const activeLevelForProgress = activeAttemptLevel();
+    if (typeof state.tonToday === 'number') {
+      store.pointsTodayByLevel[activeLevelForProgress] = state.tonToday;
+    }
     ensureLevelTodayState(activeLevelForProgress);
     store.pointsDate = todayStr();
     store.best = state.best;
@@ -1827,7 +1833,7 @@
   document.getElementById('toHomeBtn').addEventListener('click', () => showScreen('home'));
 
   function enterGame(){
-    if (!hasAttemptsLeft()){
+    if (!hasAttemptsLeft() || dailyEarningsComplete()){
       showScreen('home');
       return;
     }
@@ -2746,7 +2752,7 @@ const GAME_TAXI_YELLOW_URI = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAfEA
     document.getElementById('retryBtn').disabled = !hasAttemptsLeft();
   }
   document.getElementById('retryBtn').addEventListener('click', () => {
-    if (!hasAttemptsLeft()){
+    if (!hasAttemptsLeft() || dailyEarningsComplete()){
       leaveGameToHome();
       return;
     }
