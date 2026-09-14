@@ -780,8 +780,7 @@
     document.getElementById('capPercent').textContent = pct + '%';
     document.getElementById('capFill').style.width = pct + '%';
     document.getElementById('capSub').innerHTML =
-      currentLevelToday.toFixed(6) + ' / ' + dailyCap.toFixed(6) + ' TON ' +
-      t('today') + ' · ' + t('statLevel') + ' ' + activeAttemptLevel();
+      pct + '% ' + t('today') + ' · ' + t('statLevel') + ' ' + activeAttemptLevel();
 
     refreshShopUI();
     renderSkinShop();
