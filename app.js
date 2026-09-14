@@ -298,7 +298,7 @@
     return Math.min(100, Math.round((getCurrentLevelTodayPoints(level) / dailyCap) * 100));
   }
   function getLevelRemainingPct(level = activeAttemptLevel()){
-    return Math.max(0, Math.min(100, Math.round((getCurrentLevelTodayPoints(level) / getLevelDailyPtsCap(level)) * 100)));
+    return Math.max(0, 100 - getLevelProgressPct(level));
   }
   function getDailyPtsCap(){ return getLevelDailyPtsCap(activeAttemptLevel()); }
   function dailyEarningsComplete(){ return activeAttemptLevel() >= 2 && getCurrentLevelTodayPoints() >= getDailyPtsCap() - 1e-9; }
@@ -801,10 +801,11 @@
     const currentLevelToday = getCurrentLevelTodayPoints();
     const pctUsed = Math.min(100, Math.round((currentLevelToday / dailyCap) * 100));
     const pctProgress = Math.max(0, Math.min(100, pctUsed));
+    const remainingTon = Math.max(0, dailyCap - currentLevelToday);
     document.getElementById('capPercent').textContent = pctProgress + '%';
     document.getElementById('capFill').style.width = pctProgress + '%';
     document.getElementById('capSub').innerHTML =
-      pctProgress + '% ' + t('today') + ' · ' + t('statLevel') + ' ' + activeAttemptLevel();
+      fmtTon(remainingTon) + ' TON left · ' + t('statLevel') + ' ' + activeAttemptLevel();
 
     refreshShopUI();
     renderSkinShop();
