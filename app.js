@@ -617,18 +617,16 @@
         if (rewardActive){
           const levelForReward = def.level;
           const currentLevelToday = Number(store.pointsTodayByLevel[levelForReward] || 0);
-          const pct = Math.round(((def.rewardDays - remainingDays) / def.rewardDays) * 100);
           const todayRemaining = Math.max(0, getLevelDailyPtsCap(levelForReward) - currentLevelToday);
           const todayPct = getLevelProgressPct(levelForReward);
-          const remainingPct = getLevelRemainingPct(levelForReward);
           rewardBlock =
             '<div class="skin-reward-box active">' +
               '<div class="skin-reward-row">' +
                 '<span>🎁 ' + t('skinRewardActive') + '</span>' +
                 '<span>' + remainingDays + ' ' + t('skinDaysLeft') + '</span>' +
               '</div>' +
-              '<div class="skin-reward-row"><span class="skin-today-pill' + (todayRemaining <= 0 ? ' full' : '') + '" style="--today-progress:' + remainingPct + '%">' + t('skinTodayLeft').replace('{amount}', fmtTon(todayRemaining)) + '</span></div>' +
-              '<div class="skin-reward-track"><div class="skin-reward-fill" style="width:' + remainingPct + '%"></div></div>' +
+              '<div class="skin-reward-row"><span class="skin-today-pill' + (todayRemaining <= 0 ? ' full' : '') + '" style="--today-progress:' + todayPct + '%">' + t('skinTodayLeft').replace('{amount}', fmtTon(todayRemaining)) + '</span></div>' +
+              '<div class="skin-reward-track"><div class="skin-reward-fill" style="width:' + todayPct + '%"></div></div>' +
               '<div class="skin-reward-hint">+' + fmtTon(def.dailyReward) + ' TON ' + t('skinPerDay') + '</div>' +
             '</div>';
         } else if (!owned) {
