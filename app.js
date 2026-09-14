@@ -584,9 +584,11 @@
       let rewardBlock = '';
       if (def.dailyReward > 0){
         if (rewardActive){
+          const levelForReward = def.level;
+          const currentLevelToday = Number(store.pointsTodayByLevel[levelForReward] || 0);
           const pct = Math.round(((def.rewardDays - remainingDays) / def.rewardDays) * 100);
-          const todayRemaining = Math.max(0, getDailyPtsCap() - store.pointsToday);
-          const todayPct = Math.min(100, Math.round((store.pointsToday / getDailyPtsCap()) * 100));
+          const todayRemaining = Math.max(0, getLevelDailyPtsCap(levelForReward) - currentLevelToday);
+          const todayPct = Math.min(100, Math.round((currentLevelToday / getLevelDailyPtsCap(levelForReward)) * 100));
           rewardBlock =
             '<div class="skin-reward-box active">' +
               '<div class="skin-reward-row">' +
@@ -997,6 +999,11 @@
     if (state.skinRewards && typeof state.skinRewards === 'object') {
       store.skinRewards = JSON.parse(JSON.stringify(state.skinRewards));
     }
+    if (!store.pointsTodayByLevel || typeof store.pointsTodayByLevel !== 'object') store.pointsTodayByLevel = {};
+    const activeLevelForProgress = activeAttemptLevel();
+    const serverLevelToday = Number(state.tonToday || 0);
+    store.pointsTodayByLevel[activeLevelForProgress] = serverLevelToday;
+    store.pointsToday = Object.values(store.pointsTodayByLevel).reduce((sum, value) => sum + Number(value || 0), 0);
     initializeOwnedPremiumAttempts();
     loadActiveAttemptState();
     saveStore();
