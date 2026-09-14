@@ -518,7 +518,7 @@
   initializeOwnedPremiumAttempts();
   loadActiveAttemptState();
   saveStore();
-  function getCoinsPerZombie(){ const level = activeAttemptLevel(); return level >= 4 ? 100 : level >= 3 ? 20 : level >= 2 ? 7 : 1; }
+  function getCoinsPerZombie(){ const level = activeAttemptLevel(); return level >= 4 ? 100 : level >= 3 ? 20 : level >= 2 ? 3 : 1; }
   function updateExchangeRateUI(){
     const rate = getCoinsPerZombie();
     document.querySelectorAll('[data-i18n="howto4"], [data-i18n="exchangeRateLabel"], [data-i18n="exchangeBtn"], [data-i18n="walletExchangeInfo"]').forEach(el => {
