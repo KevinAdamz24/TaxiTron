@@ -315,29 +315,6 @@
     const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
     return values.year + '-' + values.month + '-' + values.day;
   }
-  /* ---- Daily passive TON reward earned from owned taxi skins (e.g. Level 2 / Level 3) ---- */
-  function creditSkinRewards(){
-    const t2 = todayStr();
-    let changed = false;
-    Object.keys(store.skinRewards).forEach(key => {
-      const r = store.skinRewards[key];
-      const def = SKIN_LEVELS.find(d => d.key === key);
-      if (!def || !def.dailyReward || r.remainingDays <= 0) return;
-      if (r.lastCreditDate !== t2){
-        const level = def.level;
-        const currentValue = Number(store.pointsTodayByLevel[level] || 0);
-        const allowed = Math.max(0, getLevelDailyPtsCap(level) - currentValue);
-        const reward = Math.min(def.dailyReward, allowed);
-        store.points += reward;
-        store.pointsTodayByLevel[level] = currentValue + reward;
-        store.pointsToday = Number(store.pointsTodayByLevel[activeAttemptLevel()] || 0);
-        if (reward > 0) r.remainingDays -= 1;
-        r.lastCreditDate = t2;
-        changed = true;
-      }
-    });
-    if (changed) saveStore();
-  }
   function ensureDailyReset(){
     const t = todayStr();
     if (store.pointsDate !== t){
@@ -347,7 +324,6 @@
       saveStore();
     }
     ensureLevelTodayState();
-    creditSkinRewards();
   }
   setInterval(() => {
     const previousDate = store.pointsDate;
@@ -363,8 +339,17 @@
     const gain = Math.min(rawGain, allowed);
     store.points += gain;
     store.pointsTodayByLevel[level] = todayLevelPoints + gain;
+    if (store.pointsTodayByLevel[level] >= getLevelDailyPtsCap(level) - 1e-9) markDailyRewardEarned(level);
     ensureLevelTodayState(level);
     saveStore();
+  }
+
+  function markDailyRewardEarned(level){
+    const def = SKIN_LEVELS.find(item => item.level === Number(level));
+    const reward = def && store.skinRewards[def.key];
+    if (!def || !reward || !def.dailyReward || reward.remainingDays <= 0 || reward.lastEarnedDate === todayStr()) return;
+    reward.remainingDays = Math.max(0, Number(reward.remainingDays || def.rewardDays) - 1);
+    reward.lastEarnedDate = todayStr();
   }
 
   /* ---- Level 1 / 2 ride attempts with level-specific cooldowns ---- */
@@ -538,6 +523,31 @@
     return store.skin;
   }
   enforceOwnedSkinSelection();
+  function repairLegacyAutoReward(){
+    const repairKey = accountStorageKey('cr3d_autoRewardRepair_v2');
+    if (localStorage.getItem(repairKey) === todayStr()) return;
+    let changed = false;
+    Object.keys(store.skinRewards || {}).forEach(key => {
+      const rewardState = store.skinRewards[key];
+      const def = SKIN_LEVELS.find(item => item.key === key);
+      if (!def || !def.dailyReward || !rewardState || rewardState.lastCreditDate !== todayStr() || Number(rewardState.remainingDays) >= def.rewardDays) return;
+      const level = def.level;
+      const credited = def.dailyReward;
+      if (credited > 0){
+        store.points = Math.max(0, store.points - credited);
+        store.pointsTodayByLevel[level] = Math.max(0, Number(store.pointsTodayByLevel[level] || 0));
+        rewardState.remainingDays = Math.min(def.rewardDays, Number(rewardState.remainingDays || 0) + 1);
+        rewardState.lastCreditDate = '';
+        changed = true;
+      }
+    });
+    localStorage.setItem(repairKey, todayStr());
+    if (changed){
+      ensureLevelTodayState();
+      saveStore();
+    }
+  }
+  repairLegacyAutoReward();
   function hasLevelTwo(){ return store.ownedSkins.indexOf('red') !== -1; }
   function hasLevelThree(){ return store.ownedSkins.indexOf('white') !== -1; }
   function hasLevelFour(){ return store.ownedSkins.indexOf('green') !== -1; }
@@ -570,9 +580,7 @@
       const owned = store.ownedSkins.indexOf(def.key) !== -1;
       const selected = store.skin === def.key;
       const reward = store.skinRewards[def.key];
-      const remainingDays = reward && reward.expiresAt
-        ? Math.max(0, Math.ceil((reward.expiresAt - Date.now()) / 86400000))
-        : Number(reward && reward.remainingDays || 0);
+      const remainingDays = Number(reward && reward.remainingDays || 0);
       const rewardActive = !!(reward && remainingDays > 0);
 
       const item = document.createElement('div');
@@ -681,7 +689,7 @@
               if (def.price > 0) store.points -= def.price;
               store.ownedSkins.push(key);
               if (def.dailyReward > 0){
-                store.skinRewards[key] = { remainingDays: def.rewardDays, expiresAt: Date.now() + def.rewardDays * 86400000, lastCreditDate: todayStr() };
+                store.skinRewards[key] = { remainingDays: def.rewardDays, expiresAt: Date.now() + def.rewardDays * 86400000, lastCreditDate: todayStr(), lastEarnedDate: '' };
               }
             }
           }
@@ -696,7 +704,6 @@
         initializeOwnedPremiumAttempts();
         loadActiveAttemptState();
         saveStore();
-        creditSkinRewards();
         setPlayerSkin(store.skin);
         refreshTopUI();
       });
@@ -1115,7 +1122,7 @@
               token: serverSession.token,
               distance: lastDistance,
               zombies: sentZombies,
-              level: store.level
+              level: activeAttemptLevel()
             })
           });
           if (res.status === 401){

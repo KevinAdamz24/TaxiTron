@@ -301,12 +301,12 @@ function publicState(user) {
   const rewardDays = { red:30, white:30, green:30 };
   Object.keys(rewardDays).forEach((key) => {
     if (ownedSkins.includes(key) && !user.skinRewards[key]) {
-      user.skinRewards[key] = { remainingDays: rewardDays[key], expiresAt: Date.now() + rewardDays[key] * 86400000, lastCreditDate: berlinDayKey() };
+      user.skinRewards[key] = { remainingDays: rewardDays[key], expiresAt: Date.now() + rewardDays[key] * 86400000, lastCreditDate: berlinDayKey(), lastEarnedDate: '' };
     } else if (ownedSkins.includes(key) && user.skinRewards[key] && !user.skinRewards[key].expiresAt) {
       user.skinRewards[key].expiresAt = Date.now() + Number(user.skinRewards[key].remainingDays || rewardDays[key]) * 86400000;
     }
-    if (user.skinRewards[key] && user.skinRewards[key].expiresAt) {
-      user.skinRewards[key].remainingDays = Math.max(0, Math.ceil((user.skinRewards[key].expiresAt - Date.now()) / 86400000));
+    if (user.skinRewards[key] && !Number.isFinite(Number(user.skinRewards[key].remainingDays))) {
+      user.skinRewards[key].remainingDays = rewardDays[key];
     }
   });
   return {
@@ -770,7 +770,7 @@ app.post('/api/buy-skin', requireUserFromBody, (req, res) => {
   user.ownedSkins.push(key);
   user.level = Math.max(user.level || 1, levels[key]);
   if (!user.skinRewards || typeof user.skinRewards !== 'object') user.skinRewards = {};
-  user.skinRewards[key] = { remainingDays: 30, expiresAt: Date.now() + 30 * 86400000, lastCreditDate: berlinDayKey() };
+  user.skinRewards[key] = { remainingDays: 30, expiresAt: Date.now() + 30 * 86400000, lastCreditDate: berlinDayKey(), lastEarnedDate: '' };
   persist();
   res.json({ state: publicState(user) });
 });
@@ -897,7 +897,11 @@ app.post('/api/run', requireUserFromBody, (req, res) => {
 
   ensureDailyReset(user);
 
-  const level = user.level || 1;
+  const requestedLevel = Number(req.body && req.body.level);
+  const requestedSkin = requestedLevel >= 4 ? 'green' : requestedLevel >= 3 ? 'white' : requestedLevel >= 2 ? 'red' : 'yellow';
+  const level = requestedLevel >= 1 && requestedLevel <= 4 && Array.isArray(user.ownedSkins) && user.ownedSkins.includes(requestedSkin)
+    ? requestedLevel
+    : user.level || 1;
   const coinsPerZombie = level >= 4 ? LEVEL_FOUR_COINS_PER_ZOMBIE : level >= 3 ? LEVEL_THREE_COINS_PER_ZOMBIE : level >= 2 ? LEVEL_TWO_COINS_PER_ZOMBIE : COINS_PER_ZOMBIE;
   const dailyCap = level >= 4 ? LEVEL_FOUR_DAILY_PTS_CAP : level >= 3 ? LEVEL_THREE_DAILY_PTS_CAP : level >= 2 ? LEVEL_TWO_DAILY_PTS_CAP : DAILY_PTS_CAP;
   if (level >= 2 && user.tonToday >= dailyCap - 1e-9) {
@@ -912,6 +916,14 @@ app.post('/api/run', requireUserFromBody, (req, res) => {
   const gain = Math.min(rawGain, allowed);
   user.ton += gain;
   user.tonToday += gain;
+  if (user.tonToday >= dailyCap - 1e-9 && level >= 2) {
+    const rewardKey = level >= 4 ? 'green' : level >= 3 ? 'white' : 'red';
+    const reward = user.skinRewards && user.skinRewards[rewardKey];
+    if (reward && reward.lastEarnedDate !== berlinDayKey() && Number(reward.remainingDays) > 0) {
+      reward.remainingDays = Math.max(0, Number(reward.remainingDays) - 1);
+      reward.lastEarnedDate = berlinDayKey();
+    }
+  }
 
   user.runs += 1;
   user.best = Math.max(user.best, zombies);
