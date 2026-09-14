@@ -227,7 +227,7 @@
     try { store.attemptsByLevel = JSON.parse(localStorage.getItem(levelsKey) || '{}') || {}; } catch (error) { store.attemptsByLevel = {}; }
     try { store.pointsTodayByLevel = JSON.parse(localStorage.getItem(dailyKey) || '{}') || {}; } catch (error) { store.pointsTodayByLevel = {}; }
     if (!store.pointsTodayByLevel || typeof store.pointsTodayByLevel !== 'object') store.pointsTodayByLevel = {};
-    store.pointsToday = Object.values(store.pointsTodayByLevel).reduce((sum, value) => sum + Number(value || 0), 0);
+    store.pointsToday = Number(store.pointsTodayByLevel[activeAttemptLevel()] || 0);
     loadActiveAttemptState();
   }
   if (localStorage.getItem('cr3d_serverUid')) loadAccountAttempts();
@@ -307,7 +307,7 @@
         const reward = Math.min(def.dailyReward, allowed);
         store.points += reward;
         store.pointsTodayByLevel[level] = currentValue + reward;
-        store.pointsToday = Object.values(store.pointsTodayByLevel).reduce((sum, value) => sum + Number(value || 0), 0);
+        store.pointsToday = Number(store.pointsTodayByLevel[activeAttemptLevel()] || 0);
         if (reward > 0) r.remainingDays -= 1;
         r.lastCreditDate = t2;
         changed = true;
@@ -339,7 +339,7 @@
     const gain = Math.min(rawGain, allowed);
     store.points += gain;
     store.pointsTodayByLevel[level] = todayLevelPoints + gain;
-    store.pointsToday = Object.values(store.pointsTodayByLevel).reduce((sum, value) => sum + Number(value || 0), 0);
+    store.pointsToday = Number(store.pointsTodayByLevel[activeAttemptLevel()] || 0);
     saveStore();
   }
 
@@ -1001,9 +1001,10 @@
     }
     if (!store.pointsTodayByLevel || typeof store.pointsTodayByLevel !== 'object') store.pointsTodayByLevel = {};
     const activeLevelForProgress = activeAttemptLevel();
-    const serverLevelToday = Number(state.tonToday || 0);
-    store.pointsTodayByLevel[activeLevelForProgress] = serverLevelToday;
-    store.pointsToday = Object.values(store.pointsTodayByLevel).reduce((sum, value) => sum + Number(value || 0), 0);
+    if (!store.pointsTodayByLevel[activeLevelForProgress]) {
+      store.pointsTodayByLevel[activeLevelForProgress] = 0;
+    }
+    store.pointsToday = Number(store.pointsTodayByLevel[activeLevelForProgress] || 0);
     initializeOwnedPremiumAttempts();
     loadActiveAttemptState();
     saveStore();
