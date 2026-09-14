@@ -272,12 +272,20 @@
     const l = Number(level || activeAttemptLevel());
     return l >= 4 ? DAILY_PTS_CAP_LEVEL_FOUR : l >= 3 ? DAILY_PTS_CAP_LEVEL_THREE : l >= 2 ? DAILY_PTS_CAP_LEVEL_TWO : DAILY_PTS_CAP_LEVEL_ONE;
   }
-  function getCurrentLevelTodayPoints(){
+  function getCurrentLevelTodayPoints(level = activeAttemptLevel()){
     if (!store.pointsTodayByLevel || typeof store.pointsTodayByLevel !== 'object') store.pointsTodayByLevel = {};
-    const level = activeAttemptLevel();
-    const value = Number(store.pointsTodayByLevel[level] || 0);
-    store.pointsTodayByLevel[level] = value;
+    const targetLevel = Number(level || activeAttemptLevel());
+    const value = Number(store.pointsTodayByLevel[targetLevel] || 0);
+    store.pointsTodayByLevel[targetLevel] = value;
     return value;
+  }
+  function getLevelProgressPct(level = activeAttemptLevel()){
+    const dailyCap = getLevelDailyPtsCap(level);
+    if (!Number.isFinite(dailyCap) || dailyCap <= 0) return 0;
+    return Math.min(100, Math.round((getCurrentLevelTodayPoints(level) / dailyCap) * 100));
+  }
+  function getLevelRemainingPct(level = activeAttemptLevel()){
+    return Math.max(0, 100 - getLevelProgressPct(level));
   }
   function getDailyPtsCap(){ return getLevelDailyPtsCap(activeAttemptLevel()); }
   function dailyEarningsComplete(){ return activeAttemptLevel() >= 2 && getCurrentLevelTodayPoints() >= getDailyPtsCap() - 1e-9; }
@@ -588,15 +596,16 @@
           const currentLevelToday = Number(store.pointsTodayByLevel[levelForReward] || 0);
           const pct = Math.round(((def.rewardDays - remainingDays) / def.rewardDays) * 100);
           const todayRemaining = Math.max(0, getLevelDailyPtsCap(levelForReward) - currentLevelToday);
-          const todayPct = Math.min(100, Math.round((currentLevelToday / getLevelDailyPtsCap(levelForReward)) * 100));
+          const todayPct = getLevelProgressPct(levelForReward);
+          const remainingPct = getLevelRemainingPct(levelForReward);
           rewardBlock =
             '<div class="skin-reward-box active">' +
               '<div class="skin-reward-row">' +
                 '<span>🎁 ' + t('skinRewardActive') + '</span>' +
                 '<span>' + remainingDays + ' ' + t('skinDaysLeft') + '</span>' +
               '</div>' +
-              '<div class="skin-reward-row"><span class="skin-today-pill' + (todayRemaining <= 0 ? ' full' : '') + '" style="--today-progress:' + todayPct + '%">' + t('skinTodayLeft').replace('{amount}', fmtTon(todayRemaining)) + '</span></div>' +
-              '<div class="skin-reward-track"><div class="skin-reward-fill" style="width:' + pct + '%"></div></div>' +
+              '<div class="skin-reward-row"><span class="skin-today-pill' + (todayRemaining <= 0 ? ' full' : '') + '" style="--today-progress:' + remainingPct + '%">' + t('skinTodayLeft').replace('{amount}', fmtTon(todayRemaining)) + '</span></div>' +
+              '<div class="skin-reward-track"><div class="skin-reward-fill" style="width:' + remainingPct + '%"></div></div>' +
               '<div class="skin-reward-hint">+' + fmtTon(def.dailyReward) + ' TON ' + t('skinPerDay') + '</div>' +
             '</div>';
         } else if (!owned) {
@@ -776,11 +785,12 @@
     document.getElementById('balanceValue').textContent = store.points.toFixed(6);
     const dailyCap = getDailyPtsCap();
     const currentLevelToday = getCurrentLevelTodayPoints();
-    const pct = Math.min(100, Math.round((currentLevelToday / dailyCap) * 100));
-    document.getElementById('capPercent').textContent = pct + '%';
-    document.getElementById('capFill').style.width = pct + '%';
+    const pctUsed = Math.min(100, Math.round((currentLevelToday / dailyCap) * 100));
+    const pctRemaining = Math.max(0, 100 - pctUsed);
+    document.getElementById('capPercent').textContent = pctRemaining + '%';
+    document.getElementById('capFill').style.width = pctRemaining + '%';
     document.getElementById('capSub').innerHTML =
-      pct + '% ' + t('today') + ' · ' + t('statLevel') + ' ' + activeAttemptLevel();
+      pctRemaining + '% ' + t('today') + ' · ' + t('statLevel') + ' ' + activeAttemptLevel();
 
     refreshShopUI();
     renderSkinShop();
