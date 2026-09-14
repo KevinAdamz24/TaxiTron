@@ -972,12 +972,12 @@
     }
     store.coins = state.coins;
     store.points = state.ton;
-    const activeLevelForServerSync = activeAttemptLevel();
     if (!store.pointsTodayByLevel || typeof store.pointsTodayByLevel !== 'object') store.pointsTodayByLevel = {};
-    if (!Number.isFinite(Number(store.pointsTodayByLevel[activeLevelForServerSync])) || Number(store.pointsTodayByLevel[activeLevelForServerSync]) <= 0) {
-      store.pointsTodayByLevel[activeLevelForServerSync] = Number(state.tonToday || 0);
+    const activeLevelForProgress = activeAttemptLevel();
+    if (!Number.isFinite(Number(store.pointsTodayByLevel[activeLevelForProgress]))) {
+      store.pointsTodayByLevel[activeLevelForProgress] = 0;
     }
-    store.pointsToday = Number(store.pointsTodayByLevel[activeLevelForServerSync] || 0);
+    store.pointsToday = Number(store.pointsTodayByLevel[activeLevelForProgress] || 0);
     store.pointsDate = todayStr();
     store.best = state.best;
     store.runs = state.runs;
@@ -1005,14 +1005,11 @@
       store.skinRewards = JSON.parse(JSON.stringify(state.skinRewards));
     }
     if (!store.pointsTodayByLevel || typeof store.pointsTodayByLevel !== 'object') store.pointsTodayByLevel = {};
-    const activeLevelForProgress = activeAttemptLevel();
-    if (!store.pointsTodayByLevel[activeLevelForProgress] && Number(state.tonToday || 0) > 0) {
-      store.pointsTodayByLevel[activeLevelForProgress] = Number(state.tonToday || 0);
+    const activeLevelForProgressFinal = activeAttemptLevel();
+    if (!Number.isFinite(Number(store.pointsTodayByLevel[activeLevelForProgressFinal]))) {
+      store.pointsTodayByLevel[activeLevelForProgressFinal] = 0;
     }
-    if (!store.pointsTodayByLevel[activeLevelForProgress]) {
-      store.pointsTodayByLevel[activeLevelForProgress] = 0;
-    }
-    store.pointsToday = Number(store.pointsTodayByLevel[activeLevelForProgress] || 0);
+    store.pointsToday = Number(store.pointsTodayByLevel[activeLevelForProgressFinal] || 0);
     initializeOwnedPremiumAttempts();
     loadActiveAttemptState();
     saveStore();
