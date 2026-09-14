@@ -231,7 +231,19 @@
     loadActiveAttemptState();
   }
   if (localStorage.getItem('cr3d_serverUid')) loadAccountAttempts();
+  function ensureLevelTodayState(level = activeAttemptLevel()){
+    if (!store.pointsTodayByLevel || typeof store.pointsTodayByLevel !== 'object') store.pointsTodayByLevel = {};
+    [1, 2, 3, 4].forEach((lvl) => {
+      const current = Number(store.pointsTodayByLevel[lvl] || 0);
+      if (!Number.isFinite(current)) store.pointsTodayByLevel[lvl] = 0;
+      else store.pointsTodayByLevel[lvl] = current;
+    });
+    const currentLevel = Number(level || activeAttemptLevel());
+    store.pointsToday = Number(store.pointsTodayByLevel[currentLevel] || 0);
+    return currentLevel;
+  }
   function saveStore(){
+    ensureLevelTodayState();
     const save = (name, value) => localStorage.setItem(accountStorageKey(name), value);
     save('cr3d_coins', store.coins);
     save('cr3d_best', store.best);
@@ -273,10 +285,11 @@
     return l >= 4 ? DAILY_PTS_CAP_LEVEL_FOUR : l >= 3 ? DAILY_PTS_CAP_LEVEL_THREE : l >= 2 ? DAILY_PTS_CAP_LEVEL_TWO : DAILY_PTS_CAP_LEVEL_ONE;
   }
   function getCurrentLevelTodayPoints(level = activeAttemptLevel()){
-    if (!store.pointsTodayByLevel || typeof store.pointsTodayByLevel !== 'object') store.pointsTodayByLevel = {};
     const targetLevel = Number(level || activeAttemptLevel());
+    ensureLevelTodayState(targetLevel);
     const value = Number(store.pointsTodayByLevel[targetLevel] || 0);
     store.pointsTodayByLevel[targetLevel] = value;
+    if (targetLevel === activeAttemptLevel()) store.pointsToday = value;
     return value;
   }
   function getLevelProgressPct(level = activeAttemptLevel()){
@@ -285,7 +298,7 @@
     return Math.min(100, Math.round((getCurrentLevelTodayPoints(level) / dailyCap) * 100));
   }
   function getLevelRemainingPct(level = activeAttemptLevel()){
-    return Math.max(0, 100 - getLevelProgressPct(level));
+    return Math.max(0, Math.min(100, Math.round((getCurrentLevelTodayPoints(level) / getLevelDailyPtsCap(level)) * 100)));
   }
   function getDailyPtsCap(){ return getLevelDailyPtsCap(activeAttemptLevel()); }
   function dailyEarningsComplete(){ return activeAttemptLevel() >= 2 && getCurrentLevelTodayPoints() >= getDailyPtsCap() - 1e-9; }
@@ -327,10 +340,11 @@
     const t = todayStr();
     if (store.pointsDate !== t){
       store.pointsDate = t;
-      store.pointsToday = 0;
       store.pointsTodayByLevel = {};
+      store.pointsToday = 0;
       saveStore();
     }
+    ensureLevelTodayState();
     creditSkinRewards();
   }
   setInterval(() => {
@@ -347,7 +361,7 @@
     const gain = Math.min(rawGain, allowed);
     store.points += gain;
     store.pointsTodayByLevel[level] = todayLevelPoints + gain;
-    store.pointsToday = Number(store.pointsTodayByLevel[activeAttemptLevel()] || 0);
+    ensureLevelTodayState(level);
     saveStore();
   }
 
@@ -786,11 +800,11 @@
     const dailyCap = getDailyPtsCap();
     const currentLevelToday = getCurrentLevelTodayPoints();
     const pctUsed = Math.min(100, Math.round((currentLevelToday / dailyCap) * 100));
-    const pctRemaining = Math.max(0, 100 - pctUsed);
-    document.getElementById('capPercent').textContent = pctRemaining + '%';
-    document.getElementById('capFill').style.width = pctRemaining + '%';
+    const pctProgress = Math.max(0, Math.min(100, pctUsed));
+    document.getElementById('capPercent').textContent = pctProgress + '%';
+    document.getElementById('capFill').style.width = pctProgress + '%';
     document.getElementById('capSub').innerHTML =
-      pctRemaining + '% ' + t('today') + ' · ' + t('statLevel') + ' ' + activeAttemptLevel();
+      pctProgress + '% ' + t('today') + ' · ' + t('statLevel') + ' ' + activeAttemptLevel();
 
     refreshShopUI();
     renderSkinShop();
@@ -983,10 +997,7 @@
     store.points = state.ton;
     if (!store.pointsTodayByLevel || typeof store.pointsTodayByLevel !== 'object') store.pointsTodayByLevel = {};
     const activeLevelForProgress = activeAttemptLevel();
-    if (!Number.isFinite(Number(store.pointsTodayByLevel[activeLevelForProgress]))) {
-      store.pointsTodayByLevel[activeLevelForProgress] = 0;
-    }
-    store.pointsToday = Number(store.pointsTodayByLevel[activeLevelForProgress] || 0);
+    ensureLevelTodayState(activeLevelForProgress);
     store.pointsDate = todayStr();
     store.best = state.best;
     store.runs = state.runs;
@@ -1015,10 +1026,7 @@
     }
     if (!store.pointsTodayByLevel || typeof store.pointsTodayByLevel !== 'object') store.pointsTodayByLevel = {};
     const activeLevelForProgressFinal = activeAttemptLevel();
-    if (!Number.isFinite(Number(store.pointsTodayByLevel[activeLevelForProgressFinal]))) {
-      store.pointsTodayByLevel[activeLevelForProgressFinal] = 0;
-    }
-    store.pointsToday = Number(store.pointsTodayByLevel[activeLevelForProgressFinal] || 0);
+    ensureLevelTodayState(activeLevelForProgressFinal);
     initializeOwnedPremiumAttempts();
     loadActiveAttemptState();
     saveStore();
