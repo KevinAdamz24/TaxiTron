@@ -263,13 +263,6 @@
   const DAILY_PTS_CAP_LEVEL_FOUR = 0.66;
   function getDailyPtsCap(){ const level = activeAttemptLevel(); return level >= 4 ? DAILY_PTS_CAP_LEVEL_FOUR : level >= 3 ? DAILY_PTS_CAP_LEVEL_THREE : level >= 2 ? DAILY_PTS_CAP_LEVEL_TWO : DAILY_PTS_CAP_LEVEL_ONE; }
   function dailyEarningsComplete(){ return activeAttemptLevel() >= 2 && store.pointsToday >= getDailyPtsCap() - 1e-9; }
-  function lockLevelTwoAttemptsAtDailyCap(){
-    if (!dailyEarningsComplete() || store.attemptsResetAt) return;
-    store.attemptsLeft = 0;
-    store.attemptsResetAt = getAttemptResetAt();
-    store.attemptsResetDay = activeAttemptLevel() >= 2 ? todayStr() : '';
-    saveStore();
-  }
 
   function todayStr(){
     const parts = new Intl.DateTimeFormat('en-CA', {
@@ -337,7 +330,7 @@
       store.attemptsLeft = Number.isFinite(Number(saved.left)) ? Number(saved.left) : level >= 2 ? 15 : 10;
       store.attemptsResetAt = saved.resetAt || null;
       store.attemptsResetDay = saved.resetDay || '';
-    } else if (level >= 2 && store.attemptsLeft === 10) {
+    } else if (level >= 2) {
       store.attemptsLeft = 15;
       store.attemptsResetAt = null;
       store.attemptsResetDay = '';
@@ -481,27 +474,25 @@
     store.level = highestOwnedLevel;
     if (store.level >= 2){
       store.skin = highestOwnedLevel >= 4 ? 'green' : highestOwnedLevel >= 3 ? 'white' : 'red';
-      store.attemptsLeft = MAX_ATTEMPTS_LEVEL_TWO;
-      store.attemptsResetAt = null;
     }
-    saveStore();
   }
   if (store.ownedSkins.indexOf(store.skin) === -1){
     store.skin = store.ownedSkins.indexOf('green') !== -1 ? 'green' : store.ownedSkins.indexOf('white') !== -1 ? 'white' : store.ownedSkins.indexOf('red') !== -1 ? 'red' : 'yellow';
-    saveStore();
   }
   function hasLevelTwo(){ return store.ownedSkins.indexOf('red') !== -1; }
   function hasLevelThree(){ return store.ownedSkins.indexOf('white') !== -1; }
   function hasLevelFour(){ return store.ownedSkins.indexOf('green') !== -1; }
-  function initializeLevelTwoAttempts(){
-    if (hasLevelTwo() && localStorage.getItem('cr3d_level2AttemptsInitialized') !== '1'){
-      store.attemptsLeft = MAX_ATTEMPTS_LEVEL_TWO;
-      store.attemptsResetAt = null;
-      localStorage.setItem('cr3d_level2AttemptsInitialized', '1');
-      saveStore();
-    }
+  function initializeOwnedPremiumAttempts(){
+    if (!store.attemptsByLevel || typeof store.attemptsByLevel !== 'object') store.attemptsByLevel = {};
+    SKIN_LEVELS.forEach(def => {
+      if (def.level >= 2 && store.ownedSkins.indexOf(def.key) !== -1 && !store.attemptsByLevel[def.level]){
+        store.attemptsByLevel[def.level] = { left:MAX_ATTEMPTS_LEVEL_TWO, resetAt:null, resetDay:'' };
+      }
+    });
   }
-  initializeLevelTwoAttempts();
+  initializeOwnedPremiumAttempts();
+  loadActiveAttemptState();
+  saveStore();
   function getCoinsPerZombie(){ const level = activeAttemptLevel(); return level >= 4 ? 100 : level >= 3 ? 20 : level >= 2 ? 7 : 1; }
   function updateExchangeRateUI(){
     const rate = getCoinsPerZombie();
@@ -615,6 +606,7 @@
         if (action === 'buy'){
           if (store.ownedSkins.indexOf(key) === -1){
             if (def.price > 0 && store.points < def.price) return;
+            saveStore();
             if (SERVER_URL && serverSession.online && serverSession.token && def.price > 0){
               const response = await fetch(SERVER_URL + '/api/buy-skin', {
                 method: 'POST',
@@ -624,36 +616,24 @@
               const data = await response.json();
               if (!response.ok) return;
               applyServerState(data.state);
-            } else {
-              store.points -= def.price;
             }
-            store.ownedSkins.push(key);
-            if (def.dailyReward > 0){
-              store.skinRewards[key] = { remainingDays: def.rewardDays, expiresAt: Date.now() + def.rewardDays * 86400000, lastCreditDate: todayStr() };
+            if (store.ownedSkins.indexOf(key) === -1){
+              if (def.price > 0) store.points -= def.price;
+              store.ownedSkins.push(key);
+              if (def.dailyReward > 0){
+                store.skinRewards[key] = { remainingDays: def.rewardDays, expiresAt: Date.now() + def.rewardDays * 86400000, lastCreditDate: todayStr() };
+              }
             }
           }
+          saveStore();
           store.skin = key;
           store.level = Math.max(store.level, def.level);
-          if (store.level >= 4){
-            store.skin = 'green';
-            store.attemptsLeft = MAX_ATTEMPTS_LEVEL_TWO;
-            store.attemptsResetAt = null;
-            localStorage.setItem('cr3d_level2AttemptsInitialized', '1');
-          } else if (store.level >= 3){
-            store.skin = 'white';
-            store.attemptsLeft = MAX_ATTEMPTS_LEVEL_TWO;
-            store.attemptsResetAt = null;
-            localStorage.setItem('cr3d_level2AttemptsInitialized', '1');
-          } else if (store.level >= 2){
-            store.skin = 'red';
-            store.attemptsLeft = MAX_ATTEMPTS_LEVEL_TWO;
-            store.attemptsResetAt = null;
-            localStorage.setItem('cr3d_level2AttemptsInitialized', '1');
-          }
         } else if (action === 'select'){
+          saveStore();
           store.skin = key;
           store.level = Math.max(store.level, def.level);
         }
+        initializeOwnedPremiumAttempts();
         loadActiveAttemptState();
         saveStore();
         creditSkinRewards();
@@ -750,7 +730,6 @@
 
   function refreshTopUI(){
     ensureDailyReset();
-    lockLevelTwoAttemptsAtDailyCap();
     document.getElementById('homeCoins').textContent = store.coins;
     document.getElementById('homeBest').textContent = store.best;
     document.getElementById('homeRuns').textContent = store.runs;
@@ -992,6 +971,7 @@
     if (state.skinRewards && typeof state.skinRewards === 'object') {
       store.skinRewards = JSON.parse(JSON.stringify(state.skinRewards));
     }
+    initializeOwnedPremiumAttempts();
     loadActiveAttemptState();
     saveStore();
     renderReferralUI(state);
