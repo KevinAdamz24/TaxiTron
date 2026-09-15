@@ -50,6 +50,7 @@ const WITHDRAWAL_CHANNEL_ID = process.env.WITHDRAWAL_CHANNEL_ID || '-10044407786
 const PLAY_GAME_URL = process.env.PLAY_GAME_URL || 'https://t.me/TaxiiTonBot';
 const NEWS_CHANNEL_URL = process.env.NEWS_CHANNEL_URL || 'https://t.me/TaxiiTon';
 const TON_EXPLORER_URL = process.env.TON_EXPLORER_URL || 'https://tonviewer.com/transaction/';
+const MINI_APP_URL = process.env.MINI_APP_URL || 'https://taxitron-production.up.railway.app';
 const TON_USD_RATE = Number(process.env.TON_USD_RATE || 0);
 const SESSION_SECRET = process.env.SESSION_SECRET || 'dev-insecure-secret-change-me';
 const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
@@ -252,6 +253,28 @@ function applyReferral(user, referralCode) {
   const inviter = users[inviterId];
   if (!inviter || String(inviter.id) === String(user.id)) return;
   user.referredBy = inviterId;
+}
+
+async function sendTelegramStartMessage(chatId) {
+  if (!BOT_TOKEN) throw new Error('server-missing-bot-token');
+  const response = await fetch('https://api.telegram.org/bot' + BOT_TOKEN + '/sendMessage', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      chat_id: chatId,
+      text: 'Willkommen bei TaxiTron! Starte jetzt dein Spiel.',
+      reply_markup: {
+        inline_keyboard: [[{
+          text: '🎮 Spiel starten',
+          web_app: { url: MINI_APP_URL },
+        }]],
+      },
+    }),
+  });
+  const body = await response.json();
+  if (!response.ok || body.ok !== true) {
+    throw new Error('telegram-start-message-failed: ' + (body.description || response.status));
+  }
 }
 
 function getOrCreateUser(id, name) {
@@ -753,6 +776,33 @@ app.get('/api/health', (req, res) => res.json({
   service: 'taxitron-server',
   storage: STORAGE_PERSISTENT ? 'persistent' : 'NOT PERSISTENT - data is lost on every restart (no Railway volume)',
 }));
+
+// ---- Telegram bot /start webhook ----
+app.post('/telegram/webhook', async (req, res) => {
+  const update = req.body || {};
+  const message = update.message;
+  const text = typeof message?.text === 'string' ? message.text : '';
+  const startMatch = text.match(/^\/start(?:@[^\s]+)?(?:\s+([^\s]+))?/i);
+  if (!message || !startMatch) return res.sendStatus(200);
+
+  const telegramUser = message.from;
+  if (!telegramUser || telegramUser.id === undefined || telegramUser.id === null) return res.sendStatus(200);
+  const userId = String(telegramUser.id);
+  const existed = !!users[userId];
+  const user = getOrCreateUser(userId, [telegramUser.first_name, telegramUser.last_name].filter(Boolean).join(' ') || telegramUser.username);
+  if (!existed) {
+    const startParameter = startMatch[1] || '';
+    if (/^ref_\d+$/i.test(startParameter)) applyReferral(user, startParameter);
+  }
+  user.lastSeenAt = Date.now();
+  persist();
+  try {
+    await sendTelegramStartMessage(message.chat && message.chat.id ? message.chat.id : userId);
+  } catch (error) {
+    console.error('[telegram] /start welcome failed: ' + error.message);
+  }
+  res.sendStatus(200);
+});
 
 // ---- Auth ----
 app.post('/api/auth', (req, res) => {
@@ -1451,7 +1501,7 @@ app.get('/admin/players', requireAdmin, (req, res) => {
     referralCount: Number(user.referralCount) || 0,
     referralRewardCount: Number(user.referralRewardCount) || 0,
     referralRewardZombies: (Number(user.referralRewardCount) || 0) * 300,
-    referralLink: 'https://t.me/TaxiTronBot?startapp=' + encodeURIComponent(referralCodeFor(user.id)),
+    referralLink: 'https://t.me/TaxiTronBot?start=' + encodeURIComponent(referralCodeFor(user.id)),
   })).sort((a, b) => b.ton - a.ton);
   res.json({
     totalUsers: players.length,
