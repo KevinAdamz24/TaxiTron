@@ -864,7 +864,7 @@
     }
     const configuredBot = window.TAXITRON_BOT_USERNAME || '';
     linkEl.value = configuredBot
-      ? 'https://t.me/' + configuredBot + '?startapp=' + encodeURIComponent(referralCode)
+      ? 'https://t.me/' + configuredBot + '?start=' + encodeURIComponent(referralCode)
       : window.location.origin + window.location.pathname + '?ref=' + encodeURIComponent(referralCode);
     if (countEl) countEl.textContent = 'Invited players: ' + Number(state && state.referralCount || 0) + ' · Rewards earned: ' + Number(state && state.referralRewardCount || 0) + ' × 300 zombies';
     const pending = Number(state && state.referralPendingZombies || 0);
@@ -882,7 +882,7 @@
     if (!referralCode) return '';
     const configuredBot = window.TAXITRON_BOT_USERNAME || '';
     return configuredBot
-      ? 'https://t.me/' + configuredBot + '?startapp=' + encodeURIComponent(referralCode)
+      ? 'https://t.me/' + configuredBot + '?start=' + encodeURIComponent(referralCode)
       : window.location.origin + window.location.pathname + '?ref=' + encodeURIComponent(referralCode);
   }
 
