@@ -203,6 +203,7 @@
     ownedSkins: JSON.parse(localStorage.getItem('cr3d_ownedSkins') || '["yellow"]'),
     skinRewards: JSON.parse(localStorage.getItem('cr3d_skinRewards') || '{}'),
     taskChannelRewardClaimed: localStorage.getItem('cr3d_taskChannelRewardClaimed') === '1',
+    withdrawChannelTaskRewardClaimed: localStorage.getItem('cr3d_withdrawChannelTaskRewardClaimed') === '1',
     adVideosWatched: parseInt(localStorage.getItem('cr3d_adVideosWatched') || '0', 10),
     adRewardClaimed: localStorage.getItem('cr3d_adRewardClaimed') === '1',
     attemptsLeft: localStorage.getItem('cr3d_attemptsLeft') !== null ? parseInt(localStorage.getItem('cr3d_attemptsLeft'), 10) : 10,
@@ -262,6 +263,7 @@
     save('cr3d_ownedSkins', JSON.stringify(store.ownedSkins));
     save('cr3d_skinRewards', JSON.stringify(store.skinRewards));
     save('cr3d_taskChannelRewardClaimed', store.taskChannelRewardClaimed ? '1' : '0');
+    save('cr3d_withdrawChannelTaskRewardClaimed', store.withdrawChannelTaskRewardClaimed ? '1' : '0');
     save('cr3d_adVideosWatched', store.adVideosWatched);
     save('cr3d_adRewardClaimed', store.adRewardClaimed ? '1' : '0');
     localStorage.setItem(accountStorageKey('cr3d_attemptsLeft'), store.attemptsLeft);
@@ -1042,6 +1044,10 @@
         taskCard.classList.remove('completed');
       }
     }
+    if (typeof state.withdrawChannelTaskRewardClaimed === 'boolean') {
+      store.withdrawChannelTaskRewardClaimed = state.withdrawChannelTaskRewardClaimed;
+      renderWithdrawChannelTask();
+    }
     if (typeof state.adVideosWatched === 'number') store.adVideosWatched = state.adVideosWatched;
     if (typeof state.adRewardClaimed === 'boolean') store.adRewardClaimed = state.adRewardClaimed;
     renderAdsTask();
@@ -1110,6 +1116,59 @@
     }
   }
   document.getElementById('checkChannelTaskBtn').addEventListener('click', checkChannelTask);
+
+  function renderWithdrawChannelTask(){
+    const statusEl = document.getElementById('withdrawChannelTaskStatus');
+    const button = document.getElementById('checkWithdrawChannelTaskBtn');
+    const card = document.getElementById('withdrawChannelTaskCard');
+    if (!statusEl || !button || !card) return;
+    if (store.withdrawChannelTaskRewardClaimed) {
+      button.disabled = true;
+      statusEl.textContent = 'Completed. +500 Zombies added to your wallet.';
+      card.classList.add('completed');
+    } else {
+      button.disabled = !serverSession.online || !serverSession.token;
+      if (!serverSession.online || !serverSession.token) statusEl.textContent = 'Open the game in Telegram to verify membership.';
+      card.classList.remove('completed');
+    }
+  }
+
+  async function checkWithdrawChannelTask(){
+    const statusEl = document.getElementById('withdrawChannelTaskStatus');
+    const button = document.getElementById('checkWithdrawChannelTaskBtn');
+    if (!statusEl || !button) return;
+    if (store.withdrawChannelTaskRewardClaimed) return;
+    if (!SERVER_URL || !serverSession.online || !serverSession.token) {
+      statusEl.textContent = 'Open the game in Telegram to verify membership.';
+      return;
+    }
+    button.disabled = true;
+    statusEl.textContent = 'Checking membership...';
+    try {
+      const response = await fetch(SERVER_URL + '/api/tasks/withdraw-channel-claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: serverSession.token })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'membership-check-failed');
+      applyServerState(data.state);
+      const reward = Number(data.rewardZombies) || 0;
+      if (reward > 0) {
+        lastPersonScore += reward;
+        savePending();
+        refreshTopUI();
+      }
+      renderWithdrawChannelTask();
+    } catch (e) {
+      button.disabled = false;
+      statusEl.textContent = e.message === 'withdraw-channel-membership-required'
+        ? 'Please join @TaxitonWithdraw first, then check again.'
+        : 'Membership could not be verified. Try again.';
+    }
+  }
+  document.getElementById('checkWithdrawChannelTaskBtn').addEventListener('click', checkWithdrawChannelTask);
+  renderWithdrawChannelTask();
 
   function renderAdsTask(){
     const progressEl = document.getElementById('adsTaskProgress');
