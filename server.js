@@ -91,6 +91,7 @@ const LEVEL_TWO_DAILY_PTS_CAP = 0.067;
 const LEVEL_THREE_DAILY_PTS_CAP = 0.2;
 const LEVEL_FOUR_DAILY_PTS_CAP = 0.66;
 const MIN_WITHDRAW = 1; // TON
+const WITHDRAWAL_FEE_RATE = 0.01;
 const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const INIT_DATA_MAX_AGE_MS = 24 * 60 * 60 * 1000; // reject stale Telegram auth payloads
 const MAX_ZOMBIES_PER_CALL = 2000; // basic anti-cheat ceiling
@@ -1340,9 +1341,11 @@ app.post('/api/withdraw', requireUserFromBody, (req, res) => {
   if (amt > user.ton) return res.status(400).json({ error: 'insufficient-funds' });
   if (hasWithdrawnToday(user)) return res.status(409).json({ error: 'already-withdrawn-today' });
 
+  const fee = Number((amt * WITHDRAWAL_FEE_RATE).toFixed(6));
+  const netAmount = Number((amt - fee).toFixed(6));
   user.ton -= amt;
   user.lastWithdrawalDay = berlinDayKey();
-  const withdrawal = { ts: Date.now(), address: String(address).trim(), amount: amt, status: 'pending' };
+  const withdrawal = { ts: Date.now(), address: String(address).trim(), amount: netAmount, grossAmount: amt, fee, status: 'pending' };
   user.withdrawals.push(withdrawal);
   if (user.withdrawals.length > 200) user.withdrawals = user.withdrawals.slice(-200);
 
