@@ -220,6 +220,8 @@ function newUser(id, name) {
     attemptsResetAt: null,
     attemptResetVersion: 0,
     taskChannelRewardClaimed: false,
+    adVideosWatched: 0,
+    adRewardClaimed: false,
     lastSeenAt: 0,
     tournamentBest: 0,
     tournamentDistance: 0,
@@ -339,6 +341,8 @@ function publicState(user) {
     referralPendingZombies: Number(user.referralPendingZombies || 0),
     attemptResetVersion: user.attemptResetVersion || 0,
     taskChannelRewardClaimed: user.taskChannelRewardClaimed === true,
+    adVideosWatched: Math.min(10, Math.max(0, Number(user.adVideosWatched) || 0)),
+    adRewardClaimed: user.adRewardClaimed === true,
     referralRewardZombies: (Number(user.referralRewardCount) || 0) * 300,
   };
 }
@@ -824,6 +828,25 @@ app.post('/api/tasks/channel-claim', requireUserFromBody, async (req, res) => {
   } catch (e) {
     res.status(502).json({ error: 'telegram-membership-check-failed' });
   }
+});
+
+app.post('/api/tasks/ad-video-claim', requireUserFromBody, (req, res) => {
+  const user = req.user;
+  const watched = Math.max(0, Math.min(10, Number(user.adVideosWatched) || 0));
+  if (user.adRewardClaimed || watched >= 10) {
+    user.adVideosWatched = 10;
+    user.adRewardClaimed = true;
+    return res.json({ watched: 10, reward: 0, completed: true, state: publicState(user) });
+  }
+  user.adVideosWatched = watched + 1;
+  let reward = 0;
+  if (user.adVideosWatched === 10 && user.adRewardClaimed !== true) {
+    reward = 0.03;
+    user.ton += reward;
+    user.adRewardClaimed = true;
+  }
+  persist();
+  res.json({ watched: user.adVideosWatched, reward, completed: user.adRewardClaimed === true, state: publicState(user) });
 });
 
 async function tonApiJson(pathname) {
