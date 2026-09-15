@@ -522,10 +522,9 @@
     if (!selected || store.ownedSkins.indexOf(selected.key) === -1 || (ownsPremiumSkin && selected.level === 1)) {
       const fallback = highestOwnedSkin();
       store.skin = fallback.key;
-      store.level = Math.max(store.level, fallback.level);
-    } else {
-      store.level = Math.max(store.level, selected.level);
     }
+    const active = SKIN_LEVELS.find(def => def.key === store.skin) || SKIN_LEVELS[0];
+    store.level = active.level;
     return store.skin;
   }
   enforceOwnedSkinSelection();
@@ -701,11 +700,11 @@
           }
           saveStore();
           store.skin = key;
-          store.level = Math.max(store.level, def.level);
+          store.level = def.level;
         } else if (action === 'select'){
           saveStore();
           store.skin = key;
-          store.level = Math.max(store.level, def.level);
+          store.level = def.level;
         }
         initializeOwnedPremiumAttempts();
         loadActiveAttemptState();
@@ -802,12 +801,14 @@
     document.getElementById('homeCoins').textContent = store.coins;
     document.getElementById('homeBest').textContent = store.best;
     document.getElementById('homeRuns').textContent = store.runs;
-    document.getElementById('homeLevel').innerHTML = store.level + '<small>·' + LEVEL_MULTIPLIER + '</small>';
+    const selectedLevel = activeAttemptLevel();
+    store.level = selectedLevel;
+    document.getElementById('homeLevel').innerHTML = selectedLevel + '<small>·' + LEVEL_MULTIPLIER + '</small>';
     const balanceCard = document.querySelector('.balance-card');
     if (balanceCard){
-      balanceCard.classList.toggle('level-2', store.level === 2);
-      balanceCard.classList.toggle('level-3', store.level === 3);
-      balanceCard.classList.toggle('level-4', store.level >= 4);
+      balanceCard.classList.toggle('level-2', selectedLevel === 2);
+      balanceCard.classList.toggle('level-3', selectedLevel === 3);
+      balanceCard.classList.toggle('level-4', selectedLevel >= 4);
     }
     document.getElementById('walletCoinsDisplay').textContent = store.coins;
     document.getElementById('walletTonDisplay').textContent = store.points.toFixed(6);
@@ -2740,11 +2741,12 @@ const GAME_TAXI_YELLOW_URI = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAfEA
   let lastHudLevel = null;
   function updateCoinCountUI(force){
     const currentDistance = Math.floor(distance);
-    const levelChanged = lastHudLevel !== store.level;
+    const currentLevel = activeAttemptLevel();
+    const levelChanged = lastHudLevel !== currentLevel;
     if (!force && lastHudZombies === personScore && lastHudDistance === currentDistance && !levelChanged) return;
     lastHudZombies = personScore;
     lastHudDistance = currentDistance;
-    lastHudLevel = store.level;
+    lastHudLevel = currentLevel;
     const zEl = document.getElementById('hudZombies');
     if (zEl) zEl.textContent = personScore;
     const dEl = document.getElementById('hudDistance');
@@ -2752,7 +2754,7 @@ const GAME_TAXI_YELLOW_URI = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAfEA
     const lblEl = document.getElementById('hudLevelLabel');
     if (lblEl) lblEl.textContent = t('statLevel');
     const lvlEl = document.getElementById('hudLevel');
-    if (lvlEl) lvlEl.textContent = store.level;
+    if (lvlEl) lvlEl.textContent = currentLevel;
     const multEl = document.getElementById('hudMult');
     if (multEl) multEl.textContent = '·' + LEVEL_MULTIPLIER;
   }
