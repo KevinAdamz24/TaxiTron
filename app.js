@@ -1149,21 +1149,16 @@
     try {
       const controller = window.Adsgram.init({ blockId: '48014' });
       await controller.show();
-      const response = await fetch(SERVER_URL + '/api/tasks/ad-video-claim', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: serverSession.token })
-      });
+      await new Promise(resolve => setTimeout(resolve, 700));
+      const response = await fetch(SERVER_URL + '/api/referrals/status?token=' + encodeURIComponent(serverSession.token));
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'ad-reward-failed');
+      if (!response.ok || !data.state) throw new Error('ad-reward-failed');
       applyServerState(data.state);
-      store.adVideosWatched = Number(data.watched) || store.adVideosWatched;
-      store.adRewardClaimed = data.completed === true;
       saveStore();
       renderAdsTask();
-      statusEl.textContent = data.reward > 0
-        ? '10 videos completed. +0.03 TON added to your balance.'
-        : store.adRewardClaimed ? 'Video task completed.' : 'Video counted.';
+      statusEl.textContent = store.adRewardClaimed
+        ? 'Video task completed. The 0.03 TON reward was added.'
+        : 'Video counted.';
     } catch (error){
       button.disabled = false;
       statusEl.textContent = 'Video was not completed. No reward was added.';
