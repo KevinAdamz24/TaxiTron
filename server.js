@@ -1338,8 +1338,10 @@ app.post('/api/withdraw', requireUserFromBody, (req, res) => {
   if (!isPlausibleTonAddress(address)) return res.status(400).json({ error: 'invalid-address' });
   if (!amt || amt < MIN_WITHDRAW) return res.status(400).json({ error: 'amount-too-small' });
   if (amt > user.ton) return res.status(400).json({ error: 'insufficient-funds' });
+  if (hasWithdrawnToday(user)) return res.status(409).json({ error: 'already-withdrawn-today' });
 
   user.ton -= amt;
+  user.lastWithdrawalDay = berlinDayKey();
   const withdrawal = { ts: Date.now(), address: String(address).trim(), amount: amt, status: 'pending' };
   user.withdrawals.push(withdrawal);
   if (user.withdrawals.length > 200) user.withdrawals = user.withdrawals.slice(-200);
