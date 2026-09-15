@@ -1269,12 +1269,7 @@
     const balEl = document.getElementById('withdrawBalance');
     if (balEl) balEl.textContent = store.points.toFixed(6);
     const btn = document.getElementById('withdrawBtn');
-    const alreadyDone = hasWithdrawnToday();
-    if (btn) btn.disabled = alreadyDone || store.points < MIN_WITHDRAW;
-    const statusEl = document.getElementById('withdrawStatus');
-    if (alreadyDone && statusEl && !statusEl.textContent) {
-      setWithdrawStatus('Already withdrawn today. You can request another withdrawal tomorrow.', 'error');
-    }
+    if (btn) btn.disabled = store.points < MIN_WITHDRAW;
     const histEl = document.getElementById('withdrawHistory');
     if (!histEl) return;
     histEl.innerHTML = '';
@@ -1305,11 +1300,6 @@
     const amount = parseFloat(amountInput.value);
     const btn = document.getElementById('withdrawBtn');
 
-    if (hasWithdrawnToday()){
-      setWithdrawStatus('You already withdrew today. You can request another withdrawal tomorrow.', 'error');
-      btn.disabled = true;
-      return;
-    }
     if (!isPlausibleTonAddress(address)){
       setWithdrawStatus(t('withdrawErrAddress'), 'error');
       return;
@@ -1347,8 +1337,6 @@
     if (!handledByServer){
       store.points -= amount;
     }
-    const dayKey = getTodayWithdrawalKey();
-    store.lastWithdrawalDay = dayKey;
     // Use the server's own withdrawal record (same ts the admin panel uses)
     // whenever we have one, so later status syncs can match it up.
     store.withdrawals.push(serverWithdrawal || { address, amount, status: 'pending', ts: Date.now() });
@@ -1357,7 +1345,7 @@
     renderWithdrawUI();
     amountInput.value = '';
     refreshTopUI();
-    btn.disabled = true;
+    btn.disabled = store.points < MIN_WITHDRAW;
   }
   document.getElementById('withdrawBtn').addEventListener('click', requestWithdraw);
 
