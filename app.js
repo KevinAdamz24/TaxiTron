@@ -203,6 +203,8 @@
     ownedSkins: JSON.parse(localStorage.getItem('cr3d_ownedSkins') || '["yellow"]'),
     skinRewards: JSON.parse(localStorage.getItem('cr3d_skinRewards') || '{}'),
     taskChannelRewardClaimed: localStorage.getItem('cr3d_taskChannelRewardClaimed') === '1',
+    adVideosWatched: parseInt(localStorage.getItem('cr3d_adVideosWatched') || '0', 10),
+    adRewardClaimed: localStorage.getItem('cr3d_adRewardClaimed') === '1',
     attemptsLeft: localStorage.getItem('cr3d_attemptsLeft') !== null ? parseInt(localStorage.getItem('cr3d_attemptsLeft'), 10) : 10,
     attemptsResetAt: localStorage.getItem('cr3d_attemptsResetAt') ? parseInt(localStorage.getItem('cr3d_attemptsResetAt'), 10) : null,
     attemptsResetDay: localStorage.getItem('cr3d_attemptsResetDay') || '',
@@ -260,6 +262,8 @@
     save('cr3d_ownedSkins', JSON.stringify(store.ownedSkins));
     save('cr3d_skinRewards', JSON.stringify(store.skinRewards));
     save('cr3d_taskChannelRewardClaimed', store.taskChannelRewardClaimed ? '1' : '0');
+    save('cr3d_adVideosWatched', store.adVideosWatched);
+    save('cr3d_adRewardClaimed', store.adRewardClaimed ? '1' : '0');
     localStorage.setItem(accountStorageKey('cr3d_attemptsLeft'), store.attemptsLeft);
     localStorage.setItem(accountStorageKey('cr3d_lastWithdrawalDay'), store.lastWithdrawalDay || '');
     const attemptsResetKey = accountStorageKey('cr3d_attemptsResetAt');
@@ -1038,6 +1042,9 @@
         taskCard.classList.remove('completed');
       }
     }
+    if (typeof state.adVideosWatched === 'number') store.adVideosWatched = state.adVideosWatched;
+    if (typeof state.adRewardClaimed === 'boolean') store.adRewardClaimed = state.adRewardClaimed;
+    renderAdsTask();
     if (typeof state.level === 'number') store.level = state.level;
     if (Array.isArray(state.ownedSkins)){
       store.ownedSkins = state.ownedSkins.slice();
@@ -1103,6 +1110,67 @@
     }
   }
   document.getElementById('checkChannelTaskBtn').addEventListener('click', checkChannelTask);
+
+  function renderAdsTask(){
+    const progressEl = document.getElementById('adsTaskProgress');
+    const button = document.getElementById('watchAdBtn');
+    const statusEl = document.getElementById('adsTaskStatus');
+    const card = document.getElementById('adsTaskCard');
+    if (!progressEl || !button || !statusEl || !card) return;
+    const watched = Math.min(10, Math.max(0, Number(store.adVideosWatched) || 0));
+    const completed = store.adRewardClaimed || watched >= 10;
+    progressEl.textContent = watched + ' / 10 videos · Reward: 0.03 TON';
+    button.disabled = completed || !serverSession.online || !serverSession.token;
+    button.textContent = completed ? 'Completed' : 'Watch video';
+    if (completed){
+      card.classList.add('completed');
+      statusEl.textContent = 'Completed. 0.03 TON was added to your balance.';
+      statusEl.className = 'task-status success';
+    } else {
+      card.classList.remove('completed');
+      if (!serverSession.online || !serverSession.token) statusEl.textContent = 'Open the game in Telegram to watch rewarded videos.';
+    }
+  }
+
+  async function watchRewardedAd(){
+    const statusEl = document.getElementById('adsTaskStatus');
+    const button = document.getElementById('watchAdBtn');
+    if (!statusEl || !button || store.adRewardClaimed) return;
+    if (!serverSession.online || !serverSession.token){
+      statusEl.textContent = 'Open the game in Telegram to watch rewarded videos.';
+      return;
+    }
+    if (!window.Adsgram || typeof window.Adsgram.init !== 'function'){
+      statusEl.textContent = 'The video service is not ready. Please try again.';
+      return;
+    }
+    button.disabled = true;
+    statusEl.textContent = 'Loading video...';
+    try {
+      const controller = window.Adsgram.init({ blockId: '48014' });
+      await controller.show();
+      const response = await fetch(SERVER_URL + '/api/tasks/ad-video-claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: serverSession.token })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'ad-reward-failed');
+      applyServerState(data.state);
+      store.adVideosWatched = Number(data.watched) || store.adVideosWatched;
+      store.adRewardClaimed = data.completed === true;
+      saveStore();
+      renderAdsTask();
+      statusEl.textContent = data.reward > 0
+        ? '10 videos completed. +0.03 TON added to your balance.'
+        : store.adRewardClaimed ? 'Video task completed.' : 'Video counted.';
+    } catch (error){
+      button.disabled = false;
+      statusEl.textContent = 'Video was not completed. No reward was added.';
+    }
+  }
+  document.getElementById('watchAdBtn').addEventListener('click', watchRewardedAd);
+  renderAdsTask();
 
   let exchangeInProgress = false;
   async function exchangePersons(){
