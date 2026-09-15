@@ -545,7 +545,7 @@
   #screen-rps-game .rps-round-badge{ margin-left:auto; margin-right:10px; padding:5px 8px; border:1px solid #71458b; border-radius:5px; color:#ffb238; font-size:9px; font-weight:900; letter-spacing:1px; }
   #screen-rps-game .rps-reference-board>header button{ background:#3b224c; border:1px solid #80549b; box-shadow:none; font-size:11px; }
   #screen-rps-game .rps-reference-arena{ height:calc(100% - 58px); min-height:0; background:radial-gradient(circle at 50% 36%,rgba(142,75,184,.25),transparent 30%),linear-gradient(180deg,#1a1025,#0e0915); background-image:radial-gradient(rgba(255,173,50,.09) 1px,transparent 1px); background-size:24px 24px; }
-  #screen-rps-game .rps-reference-arena:before{ content:'WÄHLE DEIN ZEICHEN'; top:43%; color:rgba(255,173,50,.7); font-size:11px; letter-spacing:3px; }
+  #screen-rps-game .rps-reference-arena:before{ content:'CHOOSE YOUR MOVE'; top:43%; color:rgba(255,173,50,.7); font-size:11px; letter-spacing:3px; }
   #screen-rps-game .rps-reference-opponents{ top:28px; left:8%; right:8%; gap:12px; }
   #screen-rps-game .rps-opponent-card{ width:31%; height:52px; background:#241432; border:1px solid #75458e; box-shadow:0 8px 18px rgba(0,0,0,.3); }
   #screen-rps-game .rps-opponent-card strong{ font-size:12px; }
@@ -595,7 +595,7 @@
   #screen-rps-game .rps-reference-board>header strong:before{ content:'◆'; color:#a9e34b; margin-right:8px; font-size:10px; }
   #screen-rps-game .rps-reference-board>header button{ background:#bd3d2f; border:1px solid #ef7148; box-shadow:0 3px 0 #69201d; }
   #screen-rps-game .rps-reference-arena{ height:calc(100% - 72px); background:radial-gradient(circle at 50% 42%,rgba(116,66,168,.2),transparent 34%),linear-gradient(180deg,rgba(26,15,35,.72),rgba(11,8,16,.94)); background-image:radial-gradient(rgba(255,173,50,.08) 1px,transparent 1px); background-size:28px 28px; }
-  #screen-rps-game .rps-reference-arena:before{ content:'SCHERE  ·  STEIN  ·  PAPIER'; position:absolute; top:35%; left:50%; transform:translate(-50%,-50%); color:rgba(255,173,50,.14); font-size:clamp(18px,4vw,34px); letter-spacing:5px; font-weight:900; white-space:nowrap; }
+  #screen-rps-game .rps-reference-arena:before{ content:'ROCK  ·  PAPER  ·  SCISSORS'; position:absolute; top:35%; left:50%; transform:translate(-50%,-50%); color:rgba(255,173,50,.14); font-size:clamp(18px,4vw,34px); letter-spacing:5px; font-weight:900; white-space:nowrap; }
   #screen-rps-game .rps-opponent-card{ background:linear-gradient(135deg,#372248,#1f172c); border:1px solid #70458a; box-shadow:0 0 18px rgba(116,66,168,.22); }
   #screen-rps-game .rps-opponent-card b{ color:#a9e34b; text-shadow:0 0 8px rgba(169,227,75,.7); }
   #screen-rps-game .rps-reference-dots{ color:#ff9b35; text-shadow:0 0 8px rgba(255,123,34,.8); }

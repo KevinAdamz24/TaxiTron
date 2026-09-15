@@ -117,17 +117,17 @@
           <div class="exchange-token-label" data-i18n="exchangeRateLabel">7 coins per zombie</div>
         </div>
       </div>
-      <button class="menu-btn" id="exchangeBtn" data-i18n="exchangeBtn">Exchange (2 🪙 per zombie)</button>
+      <button class="menu-btn" id="exchangeBtn" data-i18n="exchangeBtn">Exchange (7 🪙 per zombie)</button>
     </div>
 
     <div class="referral-card">
-      <div class="referral-title">Invite friends</div>
-      <div class="referral-copy">Share your personal link. Each new player who completes the channel task earns you 300 Zombies once.</div>
-      <div class="referral-row"><input id="referralLink" class="withdraw-input" readonly placeholder="Open the game in Telegram"><button class="menu-btn secondary" id="referralCopyBtn" type="button">Copy</button></div>
-      <button class="menu-btn" id="referralShareBtn" type="button">Share invite link</button>
+      <div class="referral-title" data-i18n="inviteFriends">Invite friends</div>
+      <div class="referral-copy" data-i18n="inviteDesc">Share your personal link. Each new player who completes the channel task earns you 300 Zombies once.</div>
+      <div class="referral-row"><input id="referralLink" class="withdraw-input" readonly data-i18n-placeholder="inviteLinkPlaceholder" placeholder="Open the game in Telegram"><button class="menu-btn secondary" id="referralCopyBtn" type="button" data-i18n="copy">Copy</button></div>
+      <button class="menu-btn" id="referralShareBtn" type="button" data-i18n="shareInvite">Share invite link</button>
       <div class="referral-count" id="referralCount">Invited players: 0</div>
       <div class="referral-pending" id="referralPending">Referral zombies ready: 0</div>
-      <button class="menu-btn secondary" id="referralExchangeBtn" type="button" disabled>Exchange referral zombies (1:1)</button>
+      <button class="menu-btn secondary" id="referralExchangeBtn" type="button" disabled data-i18n="exchangeReferral">Exchange referral zombies (1:1)</button>
     </div>
 
     <div class="wallet-tabs">
@@ -172,51 +172,51 @@
   <!-- TASKS -->
   <main class="screen" id="screen-task">
     <div class="hero" style="padding:22px 20px;">
-      <h1 style="font-size:1.3rem;">Tasks</h1>
-      <p>Complete tasks and collect rewards.</p>
+      <h1 style="font-size:1.3rem;" data-i18n="tasksTitle">Tasks</h1>
+      <p data-i18n="tasksDesc">Complete tasks and collect rewards.</p>
     </div>
     <div class="task-card" id="channelTaskCard">
       <div class="task-card-icon"><img src="sprites/taskbutton.png" alt="Task"></div>
       <div class="task-card-content">
-        <h2>Join @TaxiiTon</h2>
-        <p>Follow the Telegram channel to complete this task.</p>
-        <div class="task-reward">Reward: +500 Zombies</div>
-        <a class="menu-btn secondary" href="https://t.me/TaxiiTon" target="_blank" rel="noopener">Open Telegram channel</a>
-        <button class="menu-btn" id="checkChannelTaskBtn">Check membership</button>
+        <h2 data-i18n="joinTaxii">Join @TaxiiTon</h2>
+        <p data-i18n="followChannel">Follow the Telegram channel to complete this task.</p>
+        <div class="task-reward" data-i18n="reward500">Reward: +500 Zombies</div>
+        <a class="menu-btn secondary" data-i18n="openChannel" href="https://t.me/TaxiiTon" target="_blank" rel="noopener">Open Telegram channel</a>
+        <button class="menu-btn" id="checkChannelTaskBtn" data-i18n="checkMembership">Check membership</button>
         <div class="task-status" id="channelTaskStatus"></div>
       </div>
     </div>
     <div class="task-card" id="withdrawChannelTaskCard">
       <div class="task-card-icon"><img src="sprites/taskbutton.png" alt="Task"></div>
       <div class="task-card-content">
-        <h2>Join @TaxitonWithdraw</h2>
-        <p>Follow the withdrawal news channel to complete this task.</p>
-        <div class="task-reward">Reward: +500 Zombies</div>
-        <a class="menu-btn secondary" href="https://t.me/TaxitonWithdraw" target="_blank" rel="noopener">Open Telegram channel</a>
-        <button class="menu-btn" id="checkWithdrawChannelTaskBtn" type="button">Check membership</button>
+        <h2 data-i18n="joinWithdraw">Join @TaxitonWithdraw</h2>
+        <p data-i18n="followWithdraw">Follow the withdrawal news channel to complete this task.</p>
+        <div class="task-reward" data-i18n="reward500">Reward: +500 Zombies</div>
+        <a class="menu-btn secondary" data-i18n="openChannel" href="https://t.me/TaxitonWithdraw" target="_blank" rel="noopener">Open Telegram channel</a>
+        <button class="menu-btn" id="checkWithdrawChannelTaskBtn" type="button" data-i18n="checkMembership">Check membership</button>
         <div class="task-status" id="withdrawChannelTaskStatus"></div>
       </div>
     </div>
     <div class="task-card invite-task-card" id="inviteTaskCard">
       <div class="task-card-icon">👥</div>
       <div class="task-card-content">
-        <h2>Invite friends</h2>
-        <p>Invite real Telegram users with your personal link. They only need to follow @TaxiiTon. No videos are required.</p>
-        <div class="referral-row"><input id="taskReferralLink" class="withdraw-input" readonly placeholder="Your invite link"><button class="menu-btn secondary" id="taskReferralCopyBtn" type="button">Copy</button></div>
-        <button class="menu-btn secondary" id="taskReferralShareBtn" type="button">Share invite link</button>
-        <div class="invite-milestone" id="inviteMilestone5"><span>5 friends → 0.05 TON</span><button class="menu-btn invite-claim-btn" data-invite-threshold="5" type="button">Claim</button></div>
-        <div class="invite-milestone" id="inviteMilestone20"><span>20 friends → 0.3 TON</span><button class="menu-btn invite-claim-btn" data-invite-threshold="20" type="button">Claim</button></div>
-        <div class="invite-milestone" id="inviteMilestone50"><span>50 friends → 1 TON</span><button class="menu-btn invite-claim-btn" data-invite-threshold="50" type="button">Claim</button></div>
+        <h2 data-i18n="inviteFriends">Invite friends</h2>
+        <p data-i18n="inviteDesc">Invite real Telegram users with your personal link. They only need to follow @TaxiiTon. No videos are required.</p>
+        <div class="referral-row"><input id="taskReferralLink" class="withdraw-input" readonly data-i18n-placeholder="inviteLinkPlaceholder" placeholder="Your invite link"><button class="menu-btn secondary" id="taskReferralCopyBtn" type="button" data-i18n="copy">Copy</button></div>
+        <button class="menu-btn secondary" id="taskReferralShareBtn" type="button" data-i18n="shareInvite">Share invite link</button>
+        <div class="invite-milestone" id="inviteMilestone5"><span>5 friends → 0.05 TON</span><button class="menu-btn invite-claim-btn" data-invite-threshold="5" type="button" data-i18n="claim">Claim</button></div>
+        <div class="invite-milestone" id="inviteMilestone20"><span>20 friends → 0.3 TON</span><button class="menu-btn invite-claim-btn" data-invite-threshold="20" type="button" data-i18n="claim">Claim</button></div>
+        <div class="invite-milestone" id="inviteMilestone50"><span>50 friends → 1 TON</span><button class="menu-btn invite-claim-btn" data-invite-threshold="50" type="button" data-i18n="claim">Claim</button></div>
         <div class="task-status" id="inviteTaskStatus"></div>
       </div>
     </div>
     <div class="task-card" id="adsTaskCard">
       <div class="task-card-icon">▶</div>
       <div class="task-card-content">
-        <h2>Watch 10 videos</h2>
-        <p>Complete 10 rewarded videos and receive 0.03 TON in total.</p>
+        <h2 data-i18n="watchVideos">Watch 10 videos</h2>
+        <p data-i18n="watchVideosDesc">Complete 10 rewarded videos and receive 0.03 TON in total.</p>
         <div class="task-reward" id="adsTaskProgress">0 / 10 videos · Reward: 0.03 TON</div>
-        <button class="menu-btn" id="watchAdBtn" type="button">Watch video</button>
+        <button class="menu-btn" id="watchAdBtn" type="button" data-i18n="watchVideo">Watch video</button>
         <div class="task-status" id="adsTaskStatus"></div>
       </div>
     </div>
@@ -225,18 +225,18 @@
   <!-- GAME MENU -->
   <main class="screen" id="screen-game-menu">
     <div class="game-lobby-panel">
-      <div class="game-lobby-header"><div><span class="game-lobby-kicker">TAXITRON ONLINE</span><h1>Game Lobby</h1><p>Alle Spieler im Raum sehen und gemeinsam beitreten.</p></div><span class="game-lobby-live"><i></i> LIVE</span></div>
+      <div class="game-lobby-header"><div><span class="game-lobby-kicker">TAXITRON ONLINE</span><h1 data-i18n="gameLobby">Game Lobby</h1><p data-i18n="lobbyPlayers">All players in the room can see and join together.</p></div><span class="game-lobby-live"><i></i> LIVE</span></div>
       <div class="game-lobby-3d"><canvas id="gameLobby3D"></canvas><span>2D LOBBY</span></div>
-      <div class="game-lobby-room"><div><strong>Offene Lobby</strong><span id="gameLobbyStatus">Warte auf Spieler...</span></div><b id="gameLobbyCount">0 online</b></div>
-      <div class="game-lobby-players" id="gameLobbyPlayers"><div class="game-lobby-empty">Spieler werden geladen...</div></div>
-      <div class="game-room-list" id="gameRoomList"><div class="game-lobby-empty">Raum wird geladen...</div></div>
+      <div class="game-lobby-room"><div><strong data-i18n="openLobby">Open lobby</strong><span id="gameLobbyStatus" data-i18n="waitingPlayers">Waiting for players...</span></div><b id="gameLobbyCount">0 <span data-i18n="online">online</span></b></div>
+      <div class="game-lobby-players" id="gameLobbyPlayers"><div class="game-lobby-empty">Loading players...</div></div>
+      <div class="game-room-list" id="gameRoomList"><div class="game-lobby-empty">Loading room...</div></div>
       <button class="game-lobby-join" id="gameLobbyJoinBtn" type="button">Join game · 0.001 TON</button>
-      <div class="game-lobby-note">Die Spielerliste wird automatisch aktualisiert.</div>
+      <div class="game-lobby-note" data-i18n="lobbyRefresh">The player list updates automatically.</div>
     </div>
     <iframe class="game-experience-frame" id="gameExperienceFrame" title="Arena Duel" hidden></iframe>
     <div class="hero" style="padding:22px 20px;">
-      <h1 style="font-size:1.3rem;">Game</h1>
-      <p>Four-player knockout tournament. Losers are eliminated each round.</p>
+      <h1 style="font-size:1.3rem;" data-i18n="game">Game</h1>
+      <p data-i18n="fourPlayer">Four-player knockout tournament. Losers are eliminated each round.</p>
     </div>
     <div class="rps-create-card">
       <div class="rps-create-heading"><div><span class="rps-kicker">PLAYER MATCH</span><h2>Create a challenge</h2></div><span class="rps-create-mark">VS</span></div>
@@ -254,21 +254,21 @@
   <main class="screen" id="screen-rps-game">
     <div class="rps-reference-layout">
       <aside class="rps-reference-sidebar">
-        <div class="rps-profile"><div class="rps-profile-avatar">✎</div><div><strong id="rpsProfileName">Gast32</strong><span>Neuling</span><div class="rps-level-track"><i></i></div></div><b>0 LVL</b></div>
-        <div class="rps-sidebar-title"><strong>Live im Duell</strong><span>ONLINE</span></div>
+        <div class="rps-profile"><div class="rps-profile-avatar">✎</div><div><strong id="rpsProfileName">Guest32</strong><span>New player</span><div class="rps-level-track"><i></i></div></div><b>0 LVL</b></div>
+        <div class="rps-sidebar-title"><strong>Live duel</strong><span>ONLINE</span></div>
         <div class="rps-player-list" id="rpsReferencePlayers"></div>
-        <div class="rps-create-reference"><label for="rpsStakeDirect">Einsatz pro Spieler</label><div><input id="rpsStakeDirect" type="number" min="0.001" step="0.001" value="0.001"><span>TON</span></div><button id="rpsCreateDirectBtn" type="button" onclick="window.startLocalRpsBot && window.startLocalRpsBot()">Spiel erstellen</button><small>4 Spieler · Gewinner 60%</small></div>
+        <div class="rps-create-reference"><label for="rpsStakeDirect">Stake per player</label><div><input id="rpsStakeDirect" type="number" min="0.001" step="0.001" value="0.001"><span>TON</span></div><button id="rpsCreateDirectBtn" type="button" onclick="window.startLocalRpsBot && window.startLocalRpsBot()">Create game</button><small>4 players · Winner 60%</small></div>
         <div class="rps-sidebar-spacer"></div>
-        <div class="rps-shop-banner"><strong>Shop</strong><span>🪙 0</span><small>Werbung entfernen</small></div>
-        <div class="rps-discord">◉ &nbsp; T R E T E  U N S E R E M<br>DISCORDSERVER BEI</div>
+        <div class="rps-shop-banner"><strong>Shop</strong><span>🪙 0</span><small>Remove ads</small></div>
+        <div class="rps-discord">◉ &nbsp; J O I N  O U R<br>DISCORD SERVER</div>
         <div class="rps-sidebar-footer"><span>◖</span><span>▣</span><span>♟</span><span>⚙</span></div>
       </aside>
       <section class="rps-reference-board">
-        <header><strong>Nachtduell</strong><span class="rps-round-badge">RUNDE 1</span><button id="rpsBackBtn">Zur Lobby</button></header>
+        <header><strong>Night duel</strong><span class="rps-round-badge">ROUND 1</span><button id="rpsBackBtn">Back to lobby</button></header>
         <div class="rps-reference-arena">
           <div class="rps-reference-opponents" id="rpsReferenceOpponents"></div>
           <div class="rps-reference-dots">•••</div>
-          <div class="rps-reference-choice"><button data-rps-choice="rock"><span class="rps-choice-mark">R</span><strong>STEIN</strong></button><button data-rps-choice="paper"><span class="rps-choice-mark">P</span><strong>PAPIER</strong></button><button data-rps-choice="scissors"><span class="rps-choice-mark">S</span><strong>SCHERE</strong></button></div>
+          <div class="rps-reference-choice"><button data-rps-choice="rock"><span class="rps-choice-mark">R</span><strong>ROCK</strong></button><button data-rps-choice="paper"><span class="rps-choice-mark">P</span><strong>PAPER</strong></button><button data-rps-choice="scissors"><span class="rps-choice-mark">S</span><strong>SCISSORS</strong></button></div>
           <div class="rps-reference-hearts">♥♥♥♥<span>♥</span></div>
           <div class="rps-reference-status" id="rpsMyGame"></div>
           <div class="rps-3d-wrap"><canvas id="rps3dCanvas"></canvas></div>
