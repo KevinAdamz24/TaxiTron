@@ -849,6 +849,36 @@ app.post('/api/tasks/ad-video-claim', requireUserFromBody, (req, res) => {
   res.json({ watched: user.adVideosWatched, reward, completed: user.adRewardClaimed === true, state: publicState(user) });
 });
 
+// AdsGram calls this public callback after a rewarded video is completed.
+// The Telegram UID is the same UID used as the key in users.json.
+app.get('/api/adsgram-reward', (req, res) => {
+  const userId = String(req.query.userid || '').trim();
+  const user = userId ? users[userId] : null;
+
+  // Always acknowledge the callback so AdsGram does not keep retrying it.
+  if (!user) return res.status(200).json({ ok: false, rewarded: false });
+
+  if (user.adRewardClaimed === true) {
+    return res.status(200).json({ ok: true, rewarded: false, completed: true, watched: 0 });
+  }
+
+  const watched = Math.max(0, Math.min(9, Number(user.adVideosWatched) || 0)) + 1;
+  let reward = 0;
+  let completed = false;
+  if (watched >= 10) {
+    user.adVideosWatched = 0;
+    user.adRewardClaimed = true;
+    user.ton += 0.03;
+    reward = 0.03;
+    completed = true;
+  } else {
+    user.adVideosWatched = watched;
+  }
+
+  persist();
+  return res.status(200).json({ ok: true, rewarded: reward > 0, reward, completed, watched: user.adVideosWatched });
+});
+
 async function tonApiJson(pathname) {
   const response = await fetch(TONAPI_URL + pathname);
   if (!response.ok) throw new Error('tonapi-http-' + response.status);
