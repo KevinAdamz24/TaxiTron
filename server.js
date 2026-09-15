@@ -209,6 +209,7 @@ function newUser(id, name) {
     coins: 0,
     ton: 0,
     tonToday: 0,
+    tonTodayByLevel: { 1: 0, 2: 0, 3: 0, 4: 0 },
     tonDate: '',
     best: 0,
     runs: 0,
@@ -278,9 +279,19 @@ function berlinWeekKey(date) {
 
 function ensureDailyReset(user) {
   const today = berlinDayKey();
+  if (!user.tonTodayByLevel || typeof user.tonTodayByLevel !== 'object') {
+    user.tonTodayByLevel = { 1: 0, 2: 0, 3: 0, 4: 0 };
+    const legacyLevel = Math.max(1, Math.min(4, Number(user.level) || 1));
+    user.tonTodayByLevel[legacyLevel] = Number(user.tonToday) || 0;
+  }
+  [1, 2, 3, 4].forEach((level) => {
+    const value = Number(user.tonTodayByLevel[level]);
+    user.tonTodayByLevel[level] = Number.isFinite(value) ? Math.max(0, value) : 0;
+  });
   if (user.tonDate !== today) {
     user.tonDate = today;
     user.tonToday = 0;
+    user.tonTodayByLevel = { 1: 0, 2: 0, 3: 0, 4: 0 };
   }
 }
 function ensureTournamentReset(user) {
@@ -293,6 +304,7 @@ function ensureTournamentReset(user) {
 }
 
 function publicState(user) {
+  ensureDailyReset(user);
   const ownedSkins = Array.isArray(user.ownedSkins) ? user.ownedSkins : ['yellow'];
   if (ownedSkins.indexOf('yellow') === -1) ownedSkins.unshift('yellow');
   user.ownedSkins = ownedSkins;
@@ -314,6 +326,7 @@ function publicState(user) {
     coins: user.coins,
     ton: user.ton,
     tonToday: user.tonToday,
+    tonTodayByLevel: user.tonTodayByLevel,
     lastWithdrawalDay: user.lastWithdrawalDay || '',
     best: user.best,
     runs: user.runs,
@@ -904,19 +917,21 @@ app.post('/api/run', requireUserFromBody, (req, res) => {
     : user.level || 1;
   const coinsPerZombie = level >= 4 ? LEVEL_FOUR_COINS_PER_ZOMBIE : level >= 3 ? LEVEL_THREE_COINS_PER_ZOMBIE : level >= 2 ? LEVEL_TWO_COINS_PER_ZOMBIE : COINS_PER_ZOMBIE;
   const dailyCap = level >= 4 ? LEVEL_FOUR_DAILY_PTS_CAP : level >= 3 ? LEVEL_THREE_DAILY_PTS_CAP : level >= 2 ? LEVEL_TWO_DAILY_PTS_CAP : DAILY_PTS_CAP;
-  if (level >= 2 && user.tonToday >= dailyCap - 1e-9) {
+  const levelToday = Number(user.tonTodayByLevel[level] || 0);
+  if (level >= 2 && levelToday >= dailyCap - 1e-9) {
     persist();
-    return res.json({ state: publicState(user), acceptedZombies: 0, error: 'daily-earn-cap-reached' });
+    return res.json({ state: publicState(user), acceptedZombies: 0, error: 'daily-earn-cap-reached', level });
   }
   const coinsGained = zombies * coinsPerZombie;
   user.coins += coinsGained;
 
   const rawGain = (coinsGained / COINS_PER_BLOCK) * PTS_PER_BLOCK * LEVEL_MULTIPLIER;
-  const allowed = Math.max(0, dailyCap - user.tonToday);
+  const allowed = Math.max(0, dailyCap - levelToday);
   const gain = Math.min(rawGain, allowed);
   user.ton += gain;
-  user.tonToday += gain;
-  if (user.tonToday >= dailyCap - 1e-9 && level >= 2) {
+  user.tonTodayByLevel[level] = levelToday + gain;
+  user.tonToday = user.tonTodayByLevel[level];
+  if (user.tonTodayByLevel[level] >= dailyCap - 1e-9 && level >= 2) {
     const rewardKey = level >= 4 ? 'green' : level >= 3 ? 'white' : 'red';
     const reward = user.skinRewards && user.skinRewards[rewardKey];
     if (reward && reward.lastEarnedDate !== berlinDayKey() && Number(reward.remainingDays) > 0) {

@@ -1012,7 +1012,13 @@
     if (state.lastWithdrawalDay) store.lastWithdrawalDay = state.lastWithdrawalDay;
     if (!store.pointsTodayByLevel || typeof store.pointsTodayByLevel !== 'object') store.pointsTodayByLevel = {};
     const activeLevelForProgress = activeAttemptLevel();
-    if (typeof state.tonToday === 'number') {
+    if (state.tonTodayByLevel && typeof state.tonTodayByLevel === 'object') {
+      [1, 2, 3, 4].forEach(level => {
+        if (typeof state.tonTodayByLevel[level] === 'number') {
+          store.pointsTodayByLevel[level] = state.tonTodayByLevel[level];
+        }
+      });
+    } else if (typeof state.tonToday === 'number') {
       store.pointsTodayByLevel[activeLevelForProgress] = state.tonToday;
     }
     ensureLevelTodayState(activeLevelForProgress);
