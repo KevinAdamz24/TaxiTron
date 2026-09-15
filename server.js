@@ -45,7 +45,8 @@ const path = require('path');
 // Config
 // ---------------------------------------------------------------
 const PORT = process.env.PORT || 3000;
-const BOT_TOKEN = process.env.BOT_TOKEN || '';
+const BOT_TOKEN = process.env.BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN || '';
+const TELEGRAM_WEBHOOK_URL = process.env.TELEGRAM_WEBHOOK_URL || 'https://taxitron-production.up.railway.app/telegram/webhook';
 const WITHDRAWAL_CHANNEL_ID = process.env.WITHDRAWAL_CHANNEL_ID || '-1004440778638';
 const PLAY_GAME_URL = process.env.PLAY_GAME_URL || 'https://t.me/TaxiiTonBot';
 const NEWS_CHANNEL_URL = process.env.NEWS_CHANNEL_URL || 'https://t.me/TaxiiTon';
@@ -274,6 +275,34 @@ async function sendTelegramStartMessage(chatId) {
   const body = await response.json();
   if (!response.ok || body.ok !== true) {
     throw new Error('telegram-start-message-failed: ' + (body.description || response.status));
+  }
+}
+
+async function startTelegramBot() {
+  if (!BOT_TOKEN) {
+    console.warn('[bot] NICHT gestartet: Token fehlt (BOT_TOKEN oder TELEGRAM_BOT_TOKEN)');
+    return;
+  }
+  try {
+    const webhookUrl = new URL(TELEGRAM_WEBHOOK_URL);
+    if (webhookUrl.protocol !== 'https:') throw new Error('Webhook-URL muss HTTPS verwenden');
+    const response = await fetch('https://api.telegram.org/bot' + BOT_TOKEN + '/setWebhook', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        url: webhookUrl.toString(),
+        allowed_updates: ['message'],
+        drop_pending_updates: false,
+      }),
+    });
+    const result = await response.json();
+    if (!response.ok || result.ok !== true) {
+      throw new Error(result.description || 'setWebhook fehlgeschlagen');
+    }
+    console.log('[bot] started (webhook)');
+    console.log('[bot] webhook configured: ' + webhookUrl.toString());
+  } catch (error) {
+    console.error('[bot] NICHT gestartet: ' + error.message);
   }
 }
 
@@ -1614,6 +1643,7 @@ app.listen(PORT, () => {
     console.error('==================================================================');
   }
   if (!BOT_TOKEN) console.warn('WARNING: BOT_TOKEN not set — /api/auth will always fail.');
+  startTelegramBot().catch((error) => console.error('[bot] NICHT gestartet: ' + error.message));
   if (!DEPOSIT_ADDRESS) console.warn('WARNING: DEPOSIT_ADDRESS not set — automatic deposits are disabled.');
   if (!PLATFORM_USER_ID) console.warn('WARNING: PLATFORM_USER_ID not set — RPS platform fees cannot be credited.');
   else {
