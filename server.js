@@ -46,6 +46,10 @@ const path = require('path');
 // ---------------------------------------------------------------
 const PORT = process.env.PORT || 3000;
 const BOT_TOKEN = process.env.BOT_TOKEN || '';
+const WITHDRAWAL_CHANNEL_ID = process.env.WITHDRAWAL_CHANNEL_ID || '-1004440778638';
+const PLAY_GAME_URL = process.env.PLAY_GAME_URL || 'https://t.me/TaxiiTonBot';
+const NEWS_CHANNEL_URL = process.env.NEWS_CHANNEL_URL || 'https://t.me/TaxiiTon';
+const TON_USD_RATE = Number(process.env.TON_USD_RATE || 0);
 const SESSION_SECRET = process.env.SESSION_SECRET || 'dev-insecure-secret-change-me';
 const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
 const PLATFORM_USER_ID = String(process.env.PLATFORM_USER_ID || '');
@@ -1220,6 +1224,47 @@ app.get('/api/withdrawals', requireUserFromQuery, (req, res) => {
   res.json({ withdrawals: req.user.withdrawals.slice(-50) });
 });
 
+function withdrawalCurrencyEmoji(currency) {
+  const icons = { TON: '💎', TRX: '🔺', USDT: '💵', BTC: '₿' };
+  return icons[String(currency || '').toUpperCase()] || '🪙';
+}
+
+async function postWithdrawalSuccessToTelegram(withdrawal) {
+  if (!BOT_TOKEN || !WITHDRAWAL_CHANNEL_ID) return false;
+  const currency = String(withdrawal.currency || 'TON').toUpperCase();
+  const amount = Number(withdrawal.amount || 0);
+  const usdValue = Number.isFinite(Number(withdrawal.usdValue))
+    ? Number(withdrawal.usdValue)
+    : currency === 'TON' && TON_USD_RATE > 0 ? amount * TON_USD_RATE : 0;
+  const txId = String(withdrawal.txId || withdrawal.txid || withdrawal.hash || 'pending');
+  const shortTxId = txId.length > 12 ? txId.slice(0, 6) + '...' + txId.slice(-6) : txId;
+  const text = [
+    '✅ Eggs Withdrawal Successful!',
+    '',
+    withdrawalCurrencyEmoji(currency) + ' Amount: ' + amount.toFixed(6) + ' ' + currency,
+    '💰 USD Value: $' + usdValue.toFixed(2),
+    '🌐 TxID: ' + shortTxId,
+  ].join('\n');
+  const response = await fetch('https://api.telegram.org/bot' + BOT_TOKEN + '/sendMessage', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      chat_id: WITHDRAWAL_CHANNEL_ID,
+      text,
+      reply_markup: {
+        inline_keyboard: [[
+          { text: '🐤 PLAY GAME 🐤', url: PLAY_GAME_URL },
+          { text: '📢 News Channel 📢', url: NEWS_CHANNEL_URL },
+        ]],
+      },
+    }),
+  });
+  if (!response.ok) throw new Error('telegram-send-message-http-' + response.status);
+  const result = await response.json();
+  if (!result.ok) throw new Error('telegram-send-message-failed');
+  return true;
+}
+
 app.get('/api/referrals/status', requireUserFromQuery, (req, res) => {
   res.json({ state: publicState(req.user) });
 });
@@ -1341,14 +1386,21 @@ app.get('/admin/withdrawals', requireAdmin, (req, res) => {
 });
 
 app.post('/admin/withdrawals/complete', requireAdmin, (req, res) => {
-  const { uid, ts } = req.body || {};
+  const { uid, ts, txId, currency, usdValue } = req.body || {};
   const user = users[String(uid)];
   if (!user) return res.status(404).json({ error: 'unknown-user' });
   const w = user.withdrawals.find((w) => w.ts === ts);
   if (!w) return res.status(404).json({ error: 'unknown-withdrawal' });
+  if (w.status === 'completed') return res.status(409).json({ error: 'withdrawal-already-completed' });
   w.status = 'completed';
+  w.currency = String(currency || w.currency || 'TON').toUpperCase();
+  if (txId) w.txId = String(txId);
+  if (usdValue !== undefined && Number.isFinite(Number(usdValue))) w.usdValue = Number(usdValue);
   persist();
-  res.json({ ok: true, withdrawal: w });
+  postWithdrawalSuccessToTelegram(w).catch((error) => {
+    console.error('[telegram] withdrawal announcement failed: ' + error.message);
+  });
+  res.json({ ok: true, withdrawal: w, announcementQueued: !!BOT_TOKEN });
 });
 
 app.post('/admin/reset-users', requireAdmin, async (req, res) => {
