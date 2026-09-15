@@ -49,6 +49,7 @@ const BOT_TOKEN = process.env.BOT_TOKEN || '';
 const WITHDRAWAL_CHANNEL_ID = process.env.WITHDRAWAL_CHANNEL_ID || '-1004440778638';
 const PLAY_GAME_URL = process.env.PLAY_GAME_URL || 'https://t.me/TaxiiTonBot';
 const NEWS_CHANNEL_URL = process.env.NEWS_CHANNEL_URL || 'https://t.me/TaxiiTon';
+const TON_EXPLORER_URL = process.env.TON_EXPLORER_URL || 'https://tonviewer.com/transaction/';
 const TON_USD_RATE = Number(process.env.TON_USD_RATE || 0);
 const SESSION_SECRET = process.env.SESSION_SECRET || 'dev-insecure-secret-change-me';
 const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
@@ -736,7 +737,7 @@ body{font-family:Segoe UI,Arial,sans-serif;background:#101018;color:#f5f2ff;max-
 const secret=()=>document.getElementById('secret').value;
 const status=(text)=>document.getElementById('status').textContent=text;
 async function load(){const s=secret();if(!s){status('ADMIN_SECRET eingeben.');return}status('Spieler werden geladen...');const r=await fetch('/admin/players',{headers:{'x-admin-secret':s}});const d=await r.json();if(!r.ok){status(d.error||'Request failed');return}document.getElementById('stats').innerHTML='<div class="stat"><span>Registrierte Spieler</span><b>'+d.totalUsers+'</b></div><div class="stat"><span>Spieler mit Einzahlung</span><b>'+d.depositUsers+'</b></div><div class="stat"><span>TON gesamt</span><b>'+Number(d.totalTon).toFixed(6)+'</b></div><div class="stat"><span>Einladungen gesamt</span><b>'+d.totalReferrals+'</b></div><div class="stat"><span>Referral-Belohnungen</span><b>'+d.totalReferralRewards+' x 300</b></div><div class="stat"><span>Referral-Zombies</span><b>'+d.totalReferralRewardZombies+'</b></div>';const list=document.getElementById('list');list.innerHTML='<div class="row"><b>Spieler</b><b>TON-Guthaben</b><b>Coins</b><b>Level</b><b>Einzahlungen</b><b>Runs</b><b>Referral</b></div>';d.players.forEach(p=>{const row=document.createElement('div');row.className='row';row.innerHTML='<span>'+p.name+'<br><span class="muted">UID '+p.uid+'</span></span><span>'+Number(p.ton).toFixed(6)+' TON</span><span>'+p.coins+'</span><span>'+p.level+'</span><span>'+p.depositCount+'</span><span>'+p.runs+'</span><span>'+p.referralCount+' eingeladen<br>'+p.referralRewardCount+' Belohnungen · '+p.referralRewardZombies+' Zombies<br>'+p.referralLink+'</span>';list.appendChild(row)});status(d.totalUsers+' Spieler geladen.')}
-async function loadWithdrawals(){const s=secret();if(!s){status('ADMIN_SECRET eingeben.');return}status('Auszahlungen werden geladen...');const r=await fetch('/admin/withdrawals?status=pending',{headers:{'x-admin-secret':s}});const d=await r.json();if(!r.ok){status(d.error||'Request failed');return}const list=document.getElementById('list');list.innerHTML=d.withdrawals.length?'':'Keine offenen Auszahlungen.';d.withdrawals.forEach(w=>{const row=document.createElement('div');row.className='row';row.innerHTML='<span>'+w.name+'<br><span class="muted">UID '+w.uid+'</span></span><span>'+w.amount+' TON</span><span>'+w.address+'</span><span class="muted">'+new Date(w.ts).toLocaleString()+'</span><button>Erledigt</button>';row.querySelector('button').onclick=async()=>{const txId=prompt('Echte TON-Transaktions-ID eingeben:');if(!txId||!txId.trim()){status('Nicht abgeschlossen: echte TxID erforderlich.');return}const rr=await fetch('/admin/withdrawals/complete',{method:'POST',headers:{'Content-Type':'application/json','x-admin-secret':s},body:JSON.stringify({uid:w.uid,ts:w.ts,txId:txId.trim(),currency:'TON'})});if(rr.ok)loadWithdrawals();else status((await rr.json()).error||'Request failed')};list.appendChild(row)})}
+async function loadWithdrawals(){const s=secret();if(!s){status('ADMIN_SECRET eingeben.');return}status('Auszahlungen werden geladen...');const r=await fetch('/admin/withdrawals?status=pending',{headers:{'x-admin-secret':s}});const d=await r.json();if(!r.ok){status(d.error||'Request failed');return}const list=document.getElementById('list');list.innerHTML=d.withdrawals.length?'':'Keine offenen Auszahlungen.';d.withdrawals.forEach(w=>{const row=document.createElement('div');row.className='row';row.innerHTML='<span>'+w.name+'<br><span class="muted">UID '+w.uid+'</span></span><span>'+w.amount+' TON</span><span>'+w.address+' <button class="copy-address" type="button">Copy</button></span><span class="muted">'+new Date(w.ts).toLocaleString()+'</span><button>Erledigt</button>';const copyButton=row.querySelector('.copy-address');copyButton.onclick=async()=>{try{await navigator.clipboard.writeText(w.address);copyButton.textContent='Copied';setTimeout(()=>{copyButton.textContent='Copy'},1200)}catch(error){const input=document.createElement('textarea');input.value=w.address;document.body.appendChild(input);input.select();document.execCommand('copy');input.remove();copyButton.textContent='Copied';setTimeout(()=>{copyButton.textContent='Copy'},1200)}};row.querySelector('button:not(.copy-address)').onclick=async()=>{const txId=prompt('Echte TON-Transaktions-ID eingeben:');if(!txId||!txId.trim()){status('Nicht abgeschlossen: echte TxID erforderlich.');return}const rr=await fetch('/admin/withdrawals/complete',{method:'POST',headers:{'Content-Type':'application/json','x-admin-secret':s},body:JSON.stringify({uid:w.uid,ts:w.ts,txId:txId.trim(),currency:'TON'})});if(rr.ok)loadWithdrawals();else status((await rr.json()).error||'Request failed')};list.appendChild(row)})}
 document.getElementById('load').onclick=load;
 document.getElementById('loadWithdrawals').onclick=loadWithdrawals;
 document.getElementById('reset').onclick=async()=>{const s=secret();if(!s){status('Enter the admin secret.');return}if(!confirm("WARNING: This resets all players' coins, TON, level, skins, stats, and withdrawals. Deposits remain protected. Continue?"))return;status('Resetting all players...');const r=await fetch('/admin/reset-users',{method:'POST',headers:{'x-admin-secret':s}});const d=await r.json();status(r.ok?'Reset complete for '+d.count+' players.':(d.error||'Reset failed'));if(r.ok)load()};
@@ -1229,6 +1230,14 @@ function withdrawalCurrencyEmoji(currency) {
   return icons[String(currency || '').toUpperCase()] || '🪙';
 }
 
+function telegramHtmlEscape(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 async function postWithdrawalSuccessToTelegram(withdrawal) {
   if (!BOT_TOKEN || !WITHDRAWAL_CHANNEL_ID) return false;
   const configuredChatId = String(WITHDRAWAL_CHANNEL_ID).trim();
@@ -1248,12 +1257,13 @@ async function postWithdrawalSuccessToTelegram(withdrawal) {
     throw new Error('telegram-withdrawal-txid-missing');
   }
   const shortTxId = txId.length > 12 ? txId.slice(0, 6) + '...' + txId.slice(-6) : txId;
+  const explorerUrl = new URL(encodeURIComponent(txId), TON_EXPLORER_URL).toString();
   const text = [
     '✅ Zombies Withdrawal Successful!',
     '',
     withdrawalCurrencyEmoji(currency) + ' Amount: ' + amount.toFixed(6) + ' ' + currency,
     '💰 USD Value: $' + usdValue.toFixed(2),
-    '🌐 TxID: ' + shortTxId,
+    '🌐 TxID: <a href="' + telegramHtmlEscape(explorerUrl) + '">' + telegramHtmlEscape(shortTxId) + '</a>',
   ].join('\n');
   const response = await fetch('https://api.telegram.org/bot' + BOT_TOKEN + '/sendMessage', {
     method: 'POST',
@@ -1261,6 +1271,7 @@ async function postWithdrawalSuccessToTelegram(withdrawal) {
     body: JSON.stringify({
       chat_id: chatId,
       text,
+      parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: [[
           { text: '🧟 PLAY GAME 🧟', url: playGameUrl.toString() },
