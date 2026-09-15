@@ -1231,6 +1231,13 @@ function withdrawalCurrencyEmoji(currency) {
 
 async function postWithdrawalSuccessToTelegram(withdrawal) {
   if (!BOT_TOKEN || !WITHDRAWAL_CHANNEL_ID) return false;
+  const configuredChatId = String(WITHDRAWAL_CHANNEL_ID).trim();
+  const chatId = /^-?\d+$/.test(configuredChatId) ? Number(configuredChatId) : configuredChatId;
+  const playGameUrl = new URL(PLAY_GAME_URL);
+  const newsChannelUrl = new URL(NEWS_CHANNEL_URL);
+  if (!['http:', 'https:'].includes(playGameUrl.protocol) || !['http:', 'https:'].includes(newsChannelUrl.protocol)) {
+    throw new Error('telegram-invalid-inline-button-url');
+  }
   const currency = String(withdrawal.currency || 'TON').toUpperCase();
   const amount = Number(withdrawal.amount || 0);
   const usdValue = Number.isFinite(Number(withdrawal.usdValue))
@@ -1239,7 +1246,7 @@ async function postWithdrawalSuccessToTelegram(withdrawal) {
   const txId = String(withdrawal.txId || withdrawal.txid || withdrawal.hash || 'pending');
   const shortTxId = txId.length > 12 ? txId.slice(0, 6) + '...' + txId.slice(-6) : txId;
   const text = [
-    '✅ Eggs Withdrawal Successful!',
+    '✅ Zombies Withdrawal Successful!',
     '',
     withdrawalCurrencyEmoji(currency) + ' Amount: ' + amount.toFixed(6) + ' ' + currency,
     '💰 USD Value: $' + usdValue.toFixed(2),
@@ -1249,19 +1256,38 @@ async function postWithdrawalSuccessToTelegram(withdrawal) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      chat_id: WITHDRAWAL_CHANNEL_ID,
+      chat_id: chatId,
       text,
       reply_markup: {
         inline_keyboard: [[
-          { text: '🐤 PLAY GAME 🐤', url: PLAY_GAME_URL },
-          { text: '📢 News Channel 📢', url: NEWS_CHANNEL_URL },
+          { text: '🧟 PLAY GAME 🧟', url: playGameUrl.toString() },
+          { text: '📢 News Channel 📢', url: newsChannelUrl.toString() },
         ]],
       },
     }),
   });
-  if (!response.ok) throw new Error('telegram-send-message-http-' + response.status);
-  const result = await response.json();
-  if (!result.ok) throw new Error('telegram-send-message-failed');
+  const responseBody = await response.text();
+  let result;
+  try {
+    result = JSON.parse(responseBody);
+  } catch (error) {
+    console.error('[telegram] sendMessage non-JSON response', {
+      httpStatus: response.status,
+      body: responseBody,
+    });
+    throw new Error('telegram-send-message-http-' + response.status + ': non-json-response');
+  }
+  if (!response.ok || result.ok !== true) {
+    console.error('[telegram] sendMessage failed', {
+      httpStatus: response.status,
+      errorCode: result.error_code,
+      description: result.description,
+      parameters: result.parameters,
+      chatId,
+      hasInlineKeyboard: true,
+    });
+    throw new Error('telegram-send-message-http-' + response.status + ': ' + (result.description || 'unknown-telegram-error'));
+  }
   return true;
 }
 
