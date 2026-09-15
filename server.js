@@ -225,6 +225,7 @@ function newUser(id, name) {
     attemptsResetAt: null,
     attemptResetVersion: 0,
     taskChannelRewardClaimed: false,
+    withdrawChannelTaskRewardClaimed: false,
     adVideosWatched: 0,
     adRewardClaimed: false,
     lastSeenAt: 0,
@@ -346,6 +347,7 @@ function publicState(user) {
     referralPendingZombies: Number(user.referralPendingZombies || 0),
     attemptResetVersion: user.attemptResetVersion || 0,
     taskChannelRewardClaimed: user.taskChannelRewardClaimed === true,
+    withdrawChannelTaskRewardClaimed: user.withdrawChannelTaskRewardClaimed === true,
     adVideosWatched: Math.min(10, Math.max(0, Number(user.adVideosWatched) || 0)),
     adRewardClaimed: user.adRewardClaimed === true,
     referralRewardZombies: (Number(user.referralRewardCount) || 0) * 300,
@@ -830,6 +832,33 @@ app.post('/api/tasks/channel-claim', requireUserFromBody, async (req, res) => {
     }
     persist();
     res.json({ claimed: true, joined: true, rewardZombies: 500, referralReward, state: publicState(user) });
+  } catch (e) {
+    res.status(502).json({ error: 'telegram-membership-check-failed' });
+  }
+});
+
+app.post('/api/tasks/withdraw-channel-claim', requireUserFromBody, async (req, res) => {
+  const user = req.user;
+  if (user.withdrawChannelTaskRewardClaimed === true) {
+    return res.json({ claimed: true, joined: true, rewardZombies: 0, state: publicState(user) });
+  }
+  if (!BOT_TOKEN) return res.status(503).json({ error: 'server-missing-bot-token' });
+
+  try {
+    const apiUrl = 'https://api.telegram.org/bot' + BOT_TOKEN + '/getChatMember?chat_id=%40TaxitonWithdraw&user_id=' + encodeURIComponent(user.id);
+    const telegramResponse = await fetch(apiUrl);
+    const telegramData = await telegramResponse.json();
+    const member = telegramData && telegramData.ok ? telegramData.result : null;
+    const joined = !!member && (
+      member.status === 'creator' ||
+      member.status === 'administrator' ||
+      member.status === 'member' ||
+      (member.status === 'restricted' && member.is_member === true)
+    );
+    if (!joined) return res.status(403).json({ error: 'withdraw-channel-membership-required', joined: false });
+    user.withdrawChannelTaskRewardClaimed = true;
+    persist();
+    res.json({ claimed: true, joined: true, rewardZombies: 500, state: publicState(user) });
   } catch (e) {
     res.status(502).json({ error: 'telegram-membership-check-failed' });
   }
