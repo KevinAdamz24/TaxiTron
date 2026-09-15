@@ -263,10 +263,10 @@ async function sendTelegramStartMessage(chatId) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       chat_id: chatId,
-      text: 'Willkommen bei TaxiTron! Starte jetzt dein Spiel.',
+      text: 'Welcome to TaxiTron! Start playing now.',
       reply_markup: {
         inline_keyboard: [[{
-          text: '🎮 Spiel starten',
+          text: '🎮 Start Game',
           web_app: { url: MINI_APP_URL },
         }]],
       },
