@@ -1250,12 +1250,12 @@ async function postWithdrawalSuccessToTelegram(withdrawal) {
   const usdValue = Number.isFinite(Number(withdrawal.usdValue))
     ? Number(withdrawal.usdValue)
     : currency === 'TON' && TON_USD_RATE > 0 ? amount * TON_USD_RATE : 0;
-  const txId = String(withdrawal.txId || withdrawal.txid || withdrawal.hash || '').trim();
-  if (!txId || txId.toLowerCase() === 'pending') {
-    throw new Error('telegram-withdrawal-txid-missing');
+  const txId = String(withdrawal.txId || withdrawal.txid || withdrawal.hash || '').trim().toLowerCase();
+  if (!/^[a-f0-9]{64}$/.test(txId)) {
+    throw new Error('telegram-withdrawal-full-64-char-hex-txid-required');
   }
   const shortTxId = txId.length > 12 ? txId.slice(0, 6) + '...' + txId.slice(-6) : txId;
-  const explorerUrl = new URL(encodeURIComponent(txId), TON_EXPLORER_URL).toString();
+  const explorerUrl = new URL(txId, TON_EXPLORER_URL).toString();
   const text = [
     '✅ Zombies Withdrawal Successful!',
     '',
@@ -1425,8 +1425,9 @@ app.get('/admin/withdrawals', requireAdmin, (req, res) => {
 
 app.post('/admin/withdrawals/complete', requireAdmin, (req, res) => {
   const { uid, ts, txId, currency, usdValue } = req.body || {};
-  if (!String(txId || '').trim() || String(txId).trim().toLowerCase() === 'pending') {
-    return res.status(400).json({ error: 'real-txid-required-before-completing-withdrawal' });
+  const normalizedTxId = String(txId || '').trim().toLowerCase();
+  if (!/^[a-f0-9]{64}$/.test(normalizedTxId)) {
+    return res.status(400).json({ error: 'full-64-character-hex-ton-transaction-hash-required' });
   }
   const user = users[String(uid)];
   if (!user) return res.status(404).json({ error: 'unknown-user' });
@@ -1435,7 +1436,7 @@ app.post('/admin/withdrawals/complete', requireAdmin, (req, res) => {
   if (w.status === 'completed') return res.status(409).json({ error: 'withdrawal-already-completed' });
   w.status = 'completed';
   w.currency = String(currency || w.currency || 'TON').toUpperCase();
-  if (txId) w.txId = String(txId);
+  w.txId = normalizedTxId;
   if (usdValue !== undefined && Number.isFinite(Number(usdValue))) w.usdValue = Number(usdValue);
   persist();
   postWithdrawalSuccessToTelegram(w).catch((error) => {
