@@ -78,7 +78,19 @@
       walletExchangeInfo: 'Exchangeable in your Wallet ({rate} 🪙 per zombie)',
       bestScoreText: 'Best: {best} zombies',
       retry: 'Retry', goHome: 'Back to Home',
-      zombiesLabel: '🧟'
+      zombiesLabel: '🧟',
+      tasksTitle: 'Tasks', tasksDesc: 'Complete tasks and collect rewards.',
+      joinTaxii: 'Join @TaxiiTon', followChannel: 'Follow the Telegram channel to complete this task.',
+      openChannel: 'Open Telegram channel', checkMembership: 'Check membership', reward500: 'Reward: +500 Zombies',
+      joinWithdraw: 'Join @TaxitonWithdraw', followWithdraw: 'Follow the withdrawal news channel to complete this task.',
+      inviteFriends: 'Invite friends', inviteDesc: 'Invite real Telegram users with your personal link. They only need to follow @TaxiiTon. No videos are required.',
+      inviteLinkPlaceholder: 'Your invite link', shareInvite: 'Share invite link', claim: 'Claim', claimed: '✓ Claimed',
+      watchVideos: 'Watch 10 videos', watchVideosDesc: 'Complete 10 rewarded videos and receive 0.03 TON in total.', watchVideo: 'Watch video',
+      gameLobby: 'Game Lobby', lobbyPlayers: 'All players in the room can see and join together.', openLobby: 'Open lobby', waitingPlayers: 'Waiting for players...',
+      online: 'online', lobbyRefresh: 'The player list updates automatically.', game: 'Game', fourPlayer: 'Four-player knockout tournament. Losers are eliminated each round.',
+      createChallenge: 'Create a challenge', fourEnter: 'Four players enter. Winner gets 60%, second place 20%, and 20% is the fee.', yourStake: 'Your stake', createGame: 'Create game', winnerPayout: 'Winner payout',
+      activePlayers: 'Active players', openGames: 'Open games', copy: 'Copy', share: 'Share', exchangeReferral: 'Exchange referral zombies (1:1)',
+      rpsChoose: 'Choose Rock, Paper or Scissors', rpsOtherOnline: 'No other players online', rpsCreate: 'Create game', rpsRound: 'ROUND', rpsNight: 'Night duel', rpsJoin: 'Join game'
     },
     fa: {
       heroDesc: 'ماشینت را در مسیر سه‌بعدی هدایت کن و زامبی‌ها را جمع‌آوری کن. در کیف پول می‌توانی آن‌ها را با سکه معاوضه کنی.',
@@ -157,7 +169,19 @@
       walletExchangeInfo: 'در کیف پول قابل معاوضه است ({rate} 🪙 به ازای هر زامبی)',
       bestScoreText: 'بهترین امتیاز: {best} زامبی',
       retry: 'دوباره', goHome: 'بازگشت به خانه',
-      zombiesLabel: '🧟'
+      zombiesLabel: '🧟',
+      tasksTitle: 'وظایف', tasksDesc: 'وظایف را کامل کنید و پاداش بگیرید.',
+      joinTaxii: 'عضویت در @TaxiiTon', followChannel: 'برای انجام این وظیفه در کانال تلگرام عضو شوید.',
+      openChannel: 'باز کردن کانال تلگرام', checkMembership: 'بررسی عضویت', reward500: 'پاداش: +۵۰۰ زامبی',
+      joinWithdraw: 'عضویت در @TaxitonWithdraw', followWithdraw: 'برای انجام این وظیفه در کانال اخبار برداشت عضو شوید.',
+      inviteFriends: 'دعوت از دوستان', inviteDesc: 'کاربران واقعی تلگرام را با لینک شخصی خود دعوت کنید. آن‌ها فقط باید در @TaxiiTon عضو شوند؛ تماشای ویدیو لازم نیست.',
+      inviteLinkPlaceholder: 'لینک دعوت شما', shareInvite: 'اشتراک‌گذاری لینک دعوت', claim: 'دریافت', claimed: '✓ دریافت شد',
+      watchVideos: 'تماشای ۱۰ ویدیو', watchVideosDesc: '۱۰ ویدیوی پاداشی را کامل کنید و در مجموع ۰٫۰۳ تون بگیرید.', watchVideo: 'تماشای ویدیو',
+      gameLobby: 'لابی بازی', lobbyPlayers: 'همه بازیکنان اتاق می‌توانند یکدیگر را ببینند و وارد شوند.', openLobby: 'لابی باز', waitingPlayers: 'در انتظار بازیکنان...',
+      online: 'آنلاین', lobbyRefresh: 'فهرست بازیکنان خودکار به‌روزرسانی می‌شود.', game: 'بازی', fourPlayer: 'مسابقه حذفی چهار نفره. بازنده‌ها در هر دور حذف می‌شوند.',
+      createChallenge: 'ایجاد چالش', fourEnter: 'چهار بازیکن وارد می‌شوند. برنده ۶۰٪، نفر دوم ۲۰٪ و ۲۰٪ کارمزد است.', yourStake: 'مبلغ ورود شما', createGame: 'ایجاد بازی', winnerPayout: 'پرداخت برنده',
+      activePlayers: 'بازیکنان فعال', openGames: 'بازی‌های باز', copy: 'کپی', share: 'اشتراک‌گذاری', exchangeReferral: 'تبدیل زامبی‌های دعوت (۱:۱)',
+      rpsChoose: 'سنگ، کاغذ یا قیچی را انتخاب کنید', rpsOtherOnline: 'بازیکن دیگری آنلاین نیست', rpsCreate: 'ایجاد بازی', rpsRound: 'دور', rpsNight: 'دوئل شبانه', rpsJoin: 'ورود به بازی'
     }
   };
   let currentLang = localStorage.getItem('cr3d_lang') || 'en';
@@ -1687,7 +1711,7 @@
     const title = document.querySelector('#screen-rps-game .rps-reference-board>header strong');
     const status = document.getElementById('rpsMyGame');
     if (title) title.textContent = 'BOT-TEST';
-    if (status) { status.style.display = 'block'; status.textContent = 'Wähle Stein, Papier oder Schere'; }
+    if (status) { status.style.display = 'block'; status.textContent = 'Choose rock, paper or scissors'; }
     document.querySelectorAll('.rps-reference-choice [data-rps-choice]').forEach((button) => button.onclick = () => playLocalRps(button.dataset.rpsChoice));
   }
   window.startLocalRpsBot = startLocalRpsBot;
@@ -1709,7 +1733,7 @@
       const activePlayers = rpsLobbyData && rpsLobbyData.activeUsers || [];
       const telegramUser = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user;
       const profileName = document.getElementById('rpsProfileName');
-      if (profileName && telegramUser) profileName.textContent = telegramUser.username || [telegramUser.first_name, telegramUser.last_name].filter(Boolean).join(' ') || 'Spieler';
+      if (profileName && telegramUser) profileName.textContent = telegramUser.username || [telegramUser.first_name, telegramUser.last_name].filter(Boolean).join(' ') || 'Player';
       const players = activePlayers.length ? activePlayers.slice(0, 4) : rpsAuthReady() ? [] : [{ name:'Wede', bot:true }, { name:'Du' }, { name:'Cannik', bot:true }, { name:'Pevan', bot:true }];
       const playerList = document.getElementById('rpsReferencePlayers');
       const opponents = document.getElementById('rpsReferenceOpponents');
@@ -1718,7 +1742,7 @@
       const isLocalBrowser = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
       const inTelegram = !isLocalBrowser && !!(window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData);
       if (directCreate) directCreate.onclick = inTelegram ? createRps : startLocalRpsBot;
-      if (playerList) playerList.innerHTML = players.length ? players.map((player, index) => '<div class="rps-reference-player"><span class="rps-check">' + (index === 1 ? '□' : '☑') + '</span><b>#' + (index === 1 ? '2' : index + 1) + '</b><i class="rps-avatar ' + colors[index] + '">' + (index === 0 ? '👀' : index === 1 ? '☺' : '◉') + '</i><strong>' + player.name + (player.bot ? ' <small>(Bot)</small>' : '') + '<small class="rps-balance">' + (Number(player.balance || 0).toFixed(3)) + ' TON</small></strong></div>').join('') : '<div class="rps-reference-empty">Keine anderen Spieler online</div>';
+      if (playerList) playerList.innerHTML = players.length ? players.map((player, index) => '<div class="rps-reference-player"><span class="rps-check">' + (index === 1 ? '□' : '☑') + '</span><b>#' + (index === 1 ? '2' : index + 1) + '</b><i class="rps-avatar ' + colors[index] + '">' + (index === 0 ? '👀' : index === 1 ? '☺' : '◉') + '</i><strong>' + player.name + (player.bot ? ' <small>(Bot)</small>' : '') + '<small class="rps-balance">' + (Number(player.balance || 0).toFixed(3)) + ' TON</small></strong></div>').join('') : '<div class="rps-reference-empty">No other players online</div>';
       if (opponents) opponents.innerHTML = players.slice(0, 3).map((player, index) => '<div class="rps-opponent-card"><i class="rps-avatar ' + colors[index] + '">' + (index === 0 ? '👀' : '◉') + '</i><strong>' + player.name + '<span>' + Number(player.balance || 0).toFixed(3) + ' TON</span></strong><b>✓</b></div>').join('');
       target.innerHTML = '';
       document.querySelectorAll('.rps-reference-choice [data-rps-choice]').forEach((button) => button.onclick = () => rpsMessage('Erstelle zuerst ein lokales Bot-Spiel.'));
@@ -1829,7 +1853,7 @@
     const roomsEl = document.getElementById('gameRoomList');
     if (!playersEl) return;
     if (!rpsAuthReady()) {
-      playersEl.innerHTML = '<div class="game-lobby-empty">Öffne das Spiel in Telegram, damit Online-Spieler angezeigt werden.</div>';
+      playersEl.innerHTML = '<div class="game-lobby-empty">Open the game in Telegram to see online players.</div>';
       if (statusEl) statusEl.textContent = 'Telegram-Verbindung erforderlich';
       if (countEl) countEl.textContent = '0 online';
       if (roomsEl) roomsEl.innerHTML = '';
@@ -1839,10 +1863,10 @@
     try {
       const response = await fetch(SERVER_URL + '/api/game/lobby?token=' + encodeURIComponent(serverSession.token));
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Lobby nicht verfügbar');
+      if (!response.ok) throw new Error(data.error || 'Lobby unavailable');
       const players = data.players || [];
-      playersEl.innerHTML = players.length ? players.map((player) => '<div class="game-lobby-player"><div class="game-lobby-online-mark"><i></i></div><strong>' + player.name + '<small>Online · ' + Number(player.balance || 0).toFixed(3) + ' TON</small></strong></div>').join('') : '<div class="game-lobby-empty">Noch keine Spieler online.</div>';
-      if (statusEl) statusEl.textContent = players.length + ' Spieler sind gerade online';
+      playersEl.innerHTML = players.length ? players.map((player) => '<div class="game-lobby-player"><div class="game-lobby-online-mark"><i></i></div><strong>' + player.name + '<small>Online · ' + Number(player.balance || 0).toFixed(3) + ' TON</small></strong></div>').join('') : '<div class="game-lobby-empty">No players online yet.</div>';
+      if (statusEl) statusEl.textContent = players.length + ' players are online';
       if (countEl) countEl.textContent = players.length + ' online';
       const roomsResponse = await fetch(SERVER_URL + '/api/game/rooms?token=' + encodeURIComponent(serverSession.token));
       const roomsData = await roomsResponse.json();
@@ -1867,7 +1891,7 @@
     }
   }
   async function joinGameRoom(roomId){
-    if (!rpsAuthReady()) { rpsMessage('Bitte in Telegram öffnen, um einem Raum beizutreten.'); return; }
+    if (!rpsAuthReady()) { rpsMessage('Open the game in Telegram to join a room.'); return; }
     try {
       const response = await fetch(SERVER_URL + '/api/game/rooms/join', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ token:serverSession.token, roomId }) });
       const data = await response.json();
@@ -1907,7 +1931,7 @@
     if (!screen || !target) return;
     currentGameRoomId = room.id;
     showScreen('rps-game');
-    target.innerHTML = '<div class="room-game-card"><div class="room-game-top"><span>RUNDE ' + room.round + '</span><b>' + Number(room.stake).toFixed(3) + ' TON</b></div><div class="room-game-players">' + room.players.map((player) => '<div class="room-game-player ' + (!player.alive ? 'out' : '') + '"><img src="sprites/' + (player.id === room.players[0].id ? 'frau.png' : 'mann.png') + '" alt=""><strong>' + player.name + '</strong><small>' + (player.selected ? '✓ bereit' : player.alive ? 'wartet...' : 'OUT') + '</small></div>').join('') + '</div><div class="room-game-status">' + (room.result ? room.result.winnerName + ' gewinnt ' + Number(room.result.winnerPayout).toFixed(6) + ' TON' : 'Der Raum ist aktiv. Der nächste Spielschritt wird vorbereitet.') + '</div></div>';
+    target.innerHTML = '<div class="room-game-card"><div class="room-game-top"><span>ROUND ' + room.round + '</span><b>' + Number(room.stake).toFixed(3) + ' TON</b></div><div class="room-game-players">' + room.players.map((player) => '<div class="room-game-player ' + (!player.alive ? 'out' : '') + '"><img src="sprites/' + (player.id === room.players[0].id ? 'frau.png' : 'mann.png') + '" alt=""><strong>' + player.name + '</strong><small>' + (player.selected ? '✓ ready' : player.alive ? 'waiting...' : 'OUT') + '</small></div>').join('') + '</div><div class="room-game-status">' + (room.result ? room.result.winnerName + ' wins ' + Number(room.result.winnerPayout).toFixed(6) + ' TON' : 'The room is active. The next game step is being prepared.') + '</div></div>';
   }
   let roomGame3D = null;
   function initRoomGame3D(){
@@ -1977,7 +2001,7 @@
   const gameLobbyJoinButton = document.getElementById('gameLobbyJoinBtn');
   if (gameLobbyJoinButton) gameLobbyJoinButton.addEventListener('click', () => {
     const statusEl = document.getElementById('gameLobbyStatus');
-    if (statusEl) statusEl.textContent = rpsAuthReady() ? 'Du bist in der Lobby.' : 'Bitte in Telegram öffnen, um beizutreten.';
+    if (statusEl) statusEl.textContent = rpsAuthReady() ? 'You are in the lobby.' : 'Open the game in Telegram to join.';
   });
   const rpsCreateButton = document.getElementById('rpsCreateBtn');
   if (rpsCreateButton) rpsCreateButton.addEventListener('click', createRps);

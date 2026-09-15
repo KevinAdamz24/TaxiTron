@@ -513,9 +513,9 @@
   <div class="result-line" id="resultLine"></div>
 
   <div class="controls" id="controls">
-    <button class="choice-btn" data-move="stein" aria-label="Rock"><img class="move-image" src="sprites/stone.png" alt="Stein"></button>
-    <button class="choice-btn" data-move="papier" aria-label="Paper"><img class="move-image" src="sprites/paper.png" alt="Papier"></button>
-    <button class="choice-btn" data-move="schere" aria-label="Scissors"><img class="move-image" src="sprites/scher.png" alt="Schere"></button>
+    <button class="choice-btn" data-move="stein" aria-label="Rock"><img class="move-image" src="sprites/stone.png" alt="Rock"></button>
+    <button class="choice-btn" data-move="papier" aria-label="Paper"><img class="move-image" src="sprites/paper.png" alt="Paper"></button>
+    <button class="choice-btn" data-move="schere" aria-label="Scissors"><img class="move-image" src="sprites/scher.png" alt="Scissors"></button>
   </div>
   <div class="waiting-note" id="waitingNote"></div>
 
@@ -573,13 +573,13 @@
   function renderHistory(){
     const history = readHistory();
     if (!history.length) {
-      historyList.innerHTML = '<p class="history-empty">Noch keine beendeten Spiele.</p>';
+      historyList.innerHTML = '<p class="history-empty">No completed games yet.</p>';
       return;
     }
     historyList.innerHTML = history.map((entry) => {
       const playersText = entry.players.map((name) => escapeHtml(name)).join(', ');
       const choicesText = (entry.choices || []).map((choice) => escapeHtml(choice)).join(' · ');
-      return '<article class="history-item"><span class="history-winner">Gewinner: ' + escapeHtml(entry.winner) + '</span><span class="history-players">Mitgespielt: ' + playersText + '</span>' + (choicesText ? '<span class="history-choices">Wahlen: ' + choicesText + '</span>' : '') + '<span class="history-payout">Gewinn: ' + escapeHtml(entry.payout) + '</span></article>';
+      return '<article class="history-item"><span class="history-winner">Winner: ' + escapeHtml(entry.winner) + '</span><span class="history-players">Players: ' + playersText + '</span>' + (choicesText ? '<span class="history-choices">Choices: ' + choicesText + '</span>' : '') + '<span class="history-payout">Winnings: ' + escapeHtml(entry.payout) + '</span></article>';
     }).join('');
   }
 
@@ -710,11 +710,11 @@
       }
       if (room.result && room.result.winnerName) {
         const finalChoices = (room.players || []).filter((player) => player.choice).map((player) => player.name + ': ' + LABEL[{ rock:'stein', paper:'papier', scissors:'schere' }[player.choice] || player.choice] + ' ' + ICONS[{ rock:'stein', paper:'papier', scissors:'schere' }[player.choice] || player.choice]);
-        resultLine.textContent = finalChoices.join(' · ') + ' · Gewinner: ' + room.result.winnerName + ' · Gewinn: ' + Number(room.result.winnerPayout || room.winnerPayout || 0).toFixed(6) + ' TON';
+        resultLine.textContent = finalChoices.join(' · ') + ' · Winner: ' + room.result.winnerName + ' · Winnings: ' + Number(room.result.winnerPayout || room.winnerPayout || 0).toFixed(6) + ' TON';
         resultLine.classList.add('round-win');
         addHistoryEntry(room.result.winnerName, (room.players || []).map((player) => player.name), Number(room.result.winnerPayout || room.winnerPayout || 0).toFixed(6) + ' TON', room.id + ':' + room.result.winnerId, finalChoices);
         document.getElementById('modalTitle').textContent = room.result.winnerName + ' wins!';
-        document.getElementById('modalSub').textContent = finalChoices.join('\n') + '\n\nGewinner: ' + room.result.winnerName + '\nGewinn: ' + Number(room.result.winnerPayout || room.winnerPayout || 0).toFixed(6) + ' TON';
+        document.getElementById('modalSub').textContent = finalChoices.join('\n') + '\n\nWinner: ' + room.result.winnerName + '\nWinnings: ' + Number(room.result.winnerPayout || room.winnerPayout || 0).toFixed(6) + ' TON';
         document.getElementById('modalCrown').textContent = me && String(room.result.winnerId) === String(me.id) ? '🏆' : '💀';
         modalOverlay.classList.add('show');
         controls.querySelectorAll('.choice-btn').forEach((button) => { button.disabled = true; button.classList.remove('picked'); });
@@ -827,7 +827,7 @@
     }
     const losingMove = (winningMove === a) ? b : a;
 
-    resultLine.textContent = LABEL[winningMove] + ' schlägt ' + LABEL[losingMove] + '!';
+    resultLine.textContent = LABEL[winningMove] + ' beats ' + LABEL[losingMove] + '!';
 
     active.forEach(p=>{
       const ped = document.getElementById('pedestal-'+p.id);
@@ -856,11 +856,11 @@
       const choice = player.choice || player.lastChoice;
       return player.name + ': ' + LABEL[choice] + ' ' + ICONS[choice];
     });
-    resultLine.textContent = choices.join(' · ') + ' · Gewinner: ' + winner.name + ' · Gewinn: ' + localPayout();
+    resultLine.textContent = choices.join(' · ') + ' · Winner: ' + winner.name + ' · Winnings: ' + localPayout();
     resultLine.classList.add('round-win');
     addHistoryEntry(winner.name, players.map((player) => player.name), localPayout(), null, choices);
     document.getElementById('modalTitle').textContent = winner.human ? 'You win!' : winner.name + ' wins!';
-    document.getElementById('modalSub').textContent = choices.join('\n') + '\n\nGewinner: ' + winner.name + '\nGewinn: ' + localPayout();
+    document.getElementById('modalSub').textContent = choices.join('\n') + '\n\nWinner: ' + winner.name + '\nWinnings: ' + localPayout();
     document.getElementById('modalCrown').textContent = winner.human ? '🏆' : '💀';
     modalOverlay.classList.add('show');
   }
