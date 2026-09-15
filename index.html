@@ -37,7 +37,7 @@
         <div class="howto-row"><div class="howto-ic">🕹️</div><div class="howto-text" data-i18n="howto1">Arrow keys, A/D or swipe to change lanes</div></div>
         <div class="howto-row"><div class="howto-ic">🧟</div><div class="howto-text" data-i18n="howto2">Collect zombies — the more on board, the faster your car goes</div></div>
         <div class="howto-row"><div class="howto-ic">🚫</div><div class="howto-text" data-i18n="howto3">Avoid other cars — one hit ends the ride</div></div>
-        <div class="howto-row"><div class="howto-ic">🪙</div><div class="howto-text" data-i18n="howto4">Trade collected zombies for coins in your Wallet (2 coins per zombie)</div></div>
+        <div class="howto-row"><div class="howto-ic">🪙</div><div class="howto-text" data-i18n="howto4">Trade collected zombies for coins in your Wallet (7 coins per zombie)</div></div>
       </div>
     </div>
   </main>
@@ -114,7 +114,7 @@
         <div class="exchange-token">
           <div class="exchange-token-icon gold"><img class="wallet-coin-image" src="sprites/coin.png" alt="Coin"></div>
           <div class="exchange-token-value gold" id="exchangePreview">0</div>
-          <div class="exchange-token-label" data-i18n="exchangeRateLabel">2 coins per zombie</div>
+          <div class="exchange-token-label" data-i18n="exchangeRateLabel">7 coins per zombie</div>
         </div>
       </div>
       <button class="menu-btn" id="exchangeBtn" data-i18n="exchangeBtn">Exchange (2 🪙 per zombie)</button>
@@ -195,6 +195,19 @@
         <a class="menu-btn secondary" href="https://t.me/TaxitonWithdraw" target="_blank" rel="noopener">Open Telegram channel</a>
         <button class="menu-btn" id="checkWithdrawChannelTaskBtn" type="button">Check membership</button>
         <div class="task-status" id="withdrawChannelTaskStatus"></div>
+      </div>
+    </div>
+    <div class="task-card invite-task-card" id="inviteTaskCard">
+      <div class="task-card-icon">👥</div>
+      <div class="task-card-content">
+        <h2>Invite friends</h2>
+        <p>Invite real Telegram users with your personal link. They only need to follow @TaxiiTon. No videos are required.</p>
+        <div class="referral-row"><input id="taskReferralLink" class="withdraw-input" readonly placeholder="Your invite link"><button class="menu-btn secondary" id="taskReferralCopyBtn" type="button">Copy</button></div>
+        <button class="menu-btn secondary" id="taskReferralShareBtn" type="button">Share invite link</button>
+        <div class="invite-milestone" id="inviteMilestone5"><span>5 friends → 0.05 TON</span><button class="menu-btn invite-claim-btn" data-invite-threshold="5" type="button">Claim</button></div>
+        <div class="invite-milestone" id="inviteMilestone20"><span>20 friends → 0.3 TON</span><button class="menu-btn invite-claim-btn" data-invite-threshold="20" type="button">Claim</button></div>
+        <div class="invite-milestone" id="inviteMilestone50"><span>50 friends → 1 TON</span><button class="menu-btn invite-claim-btn" data-invite-threshold="50" type="button">Claim</button></div>
+        <div class="task-status" id="inviteTaskStatus"></div>
       </div>
     </div>
     <div class="task-card" id="adsTaskCard">

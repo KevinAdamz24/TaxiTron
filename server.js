@@ -78,7 +78,7 @@ const STORAGE_PERSISTENT = !ON_RAILWAY || (
 
 // Must mirror the client's economy constants (index.html) exactly.
 const COINS_PER_ZOMBIE = 1;
-const LEVEL_TWO_COINS_PER_ZOMBIE = 3;
+const LEVEL_TWO_COINS_PER_ZOMBIE = 7;
 const LEVEL_THREE_COINS_PER_ZOMBIE = 20;
 const LEVEL_FOUR_COINS_PER_ZOMBIE = 100;
 const COINS_PER_BLOCK = 10000;
@@ -240,6 +240,7 @@ function newUser(id, name) {
     referralPendingZombies: 0,
     referredBy: null,
     referralRewardClaimed: false,
+    inviteRewardsClaimed: {},
   };
 }
 
@@ -251,7 +252,6 @@ function applyReferral(user, referralCode) {
   const inviter = users[inviterId];
   if (!inviter || String(inviter.id) === String(user.id)) return;
   user.referredBy = inviterId;
-  inviter.referralCount = Number(inviter.referralCount || 0) + 1;
 }
 
 function getOrCreateUser(id, name) {
@@ -345,6 +345,7 @@ function publicState(user) {
     referralCount: Number(user.referralCount || 0),
     referralRewardCount: Number(user.referralRewardCount || 0),
     referralPendingZombies: Number(user.referralPendingZombies || 0),
+    inviteRewardsClaimed: user.inviteRewardsClaimed && typeof user.inviteRewardsClaimed === 'object' ? user.inviteRewardsClaimed : {},
     attemptResetVersion: user.attemptResetVersion || 0,
     taskChannelRewardClaimed: user.taskChannelRewardClaimed === true,
     withdrawChannelTaskRewardClaimed: user.withdrawChannelTaskRewardClaimed === true,
@@ -824,6 +825,7 @@ app.post('/api/tasks/channel-claim', requireUserFromBody, async (req, res) => {
     if (user.referredBy && !user.referralRewardClaimed) {
       const inviter = users[String(user.referredBy)];
       if (inviter) {
+        inviter.referralCount = Number(inviter.referralCount || 0) + 1;
         inviter.referralPendingZombies = Number(inviter.referralPendingZombies || 0) + 300;
         inviter.referralRewardCount = Number(inviter.referralRewardCount || 0) + 1;
         referralReward = 300;
@@ -835,6 +837,26 @@ app.post('/api/tasks/channel-claim', requireUserFromBody, async (req, res) => {
   } catch (e) {
     res.status(502).json({ error: 'telegram-membership-check-failed' });
   }
+});
+
+app.post('/api/referrals/invite-claim', requireUserFromBody, (req, res) => {
+  const user = req.user;
+  const milestones = { 5: 0.05, 20: 0.3, 50: 1 };
+  const threshold = Number(req.body && req.body.threshold);
+  if (!Object.prototype.hasOwnProperty.call(milestones, threshold)) {
+    return res.status(400).json({ error: 'invalid-invite-threshold' });
+  }
+  const inviteCount = Number(user.referralCount || 0);
+  if (inviteCount < threshold) return res.status(400).json({ error: 'invite-threshold-not-reached' });
+  if (!user.inviteRewardsClaimed || typeof user.inviteRewardsClaimed !== 'object') user.inviteRewardsClaimed = {};
+  if (user.inviteRewardsClaimed[String(threshold)] === true) {
+    return res.json({ reward: 0, claimed: true, state: publicState(user) });
+  }
+  const reward = milestones[threshold];
+  user.ton += reward;
+  user.inviteRewardsClaimed[String(threshold)] = true;
+  persist();
+  res.json({ reward, claimed: true, state: publicState(user) });
 });
 
 app.post('/api/tasks/withdraw-channel-claim', requireUserFromBody, async (req, res) => {
@@ -1482,6 +1504,7 @@ app.post('/admin/reset-users', requireAdmin, async (req, res) => {
     user.coins = 0;
     user.ton = 0;
     user.tonToday = 0;
+    user.tonTodayByLevel = { 1: 0, 2: 0, 3: 0, 4: 0 };
     user.tonDate = '';
     user.best = 0;
     user.runs = 0;
@@ -1496,6 +1519,8 @@ app.post('/admin/reset-users', requireAdmin, async (req, res) => {
     user.tournamentWeekKey = '';
     user.withdrawals = [];
     user.taskChannelRewardClaimed = false;
+    user.withdrawChannelTaskRewardClaimed = false;
+    user.inviteRewardsClaimed = {};
     user.depositTxs = depositTxs;
   });
 

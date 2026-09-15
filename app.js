@@ -568,7 +568,7 @@
   initializeOwnedPremiumAttempts();
   loadActiveAttemptState();
   saveStore();
-  function getCoinsPerZombie(){ const level = activeAttemptLevel(); return level >= 4 ? 100 : level >= 3 ? 20 : level >= 2 ? 3 : 1; }
+  function getCoinsPerZombie(){ const level = activeAttemptLevel(); return level >= 4 ? 100 : level >= 3 ? 20 : level >= 2 ? 7 : 1; }
   function updateExchangeRateUI(){
     const rate = getCoinsPerZombie();
     document.querySelectorAll('[data-i18n="howto4"], [data-i18n="exchangeRateLabel"], [data-i18n="exchangeBtn"], [data-i18n="walletExchangeInfo"]').forEach(el => {
@@ -871,6 +871,32 @@
     const exchangeBtn = document.getElementById('referralExchangeBtn');
     if (pendingEl) pendingEl.textContent = 'Referral zombies ready: ' + pending + ' · Exchange rate: 1:1';
     if (exchangeBtn) exchangeBtn.disabled = pending <= 0 || !serverSession.online;
+    renderInviteUI(state);
+  }
+
+  function getReferralLink(state){
+    const telegramUser = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user;
+    const uid = state && state.uid || localStorage.getItem('cr3d_serverUid') || telegramUser && telegramUser.id;
+    const referralCode = state && state.referralCode || (uid ? 'ref_' + String(uid) : '');
+    if (!referralCode) return '';
+    const configuredBot = window.TAXITRON_BOT_USERNAME || '';
+    return configuredBot
+      ? 'https://t.me/' + configuredBot + '?startapp=' + encodeURIComponent(referralCode)
+      : window.location.origin + window.location.pathname + '?ref=' + encodeURIComponent(referralCode);
+  }
+
+  function renderInviteUI(state){
+    const linkEl = document.getElementById('taskReferralLink');
+    const count = Number(state && state.referralCount || 0);
+    const claimed = state && state.inviteRewardsClaimed || {};
+    if (linkEl) linkEl.value = getReferralLink(state) || 'Open the game in Telegram to get your link';
+    document.querySelectorAll('.invite-claim-btn').forEach(button => {
+      const threshold = button.dataset.inviteThreshold;
+      const isClaimed = claimed[String(threshold)] === true;
+      const eligible = count >= Number(threshold);
+      button.disabled = isClaimed || !eligible || !serverSession.online || !serverSession.token;
+      button.textContent = isClaimed ? '✓ Claimed' : eligible ? 'Claim' : count + '/' + threshold;
+    });
   }
 
   let referralSyncInFlight = false;
@@ -893,6 +919,44 @@
   }
   setInterval(syncReferralStatus, 5000);
   renderReferralUI();
+
+  document.querySelectorAll('.invite-claim-btn').forEach(button => {
+    button.addEventListener('click', async () => {
+      if (!serverSession.online || !serverSession.token) return;
+      const threshold = Number(button.dataset.inviteThreshold);
+      button.disabled = true;
+      try {
+        const response = await fetch(SERVER_URL + '/api/referrals/invite-claim', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: serverSession.token, threshold })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'invite-claim-failed');
+        applyServerState(data.state);
+        renderReferralUI(data.state);
+        refreshTopUI();
+      } catch (error) {
+        renderInviteUI();
+      }
+    });
+  });
+
+  document.getElementById('taskReferralCopyBtn').addEventListener('click', async () => {
+    const link = document.getElementById('taskReferralLink').value;
+    if (!link || link.startsWith('Open ')) return;
+    await navigator.clipboard.writeText(link);
+  });
+  document.getElementById('taskReferralShareBtn').addEventListener('click', () => {
+    const link = document.getElementById('taskReferralLink').value;
+    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.switchInlineQuery) {
+      window.Telegram.WebApp.switchInlineQuery(link, []);
+    } else if (navigator.share) {
+      navigator.share({ title: 'Invite friends', url: link });
+    } else {
+      navigator.clipboard.writeText(link);
+    }
+  });
 
   document.getElementById('referralExchangeBtn').addEventListener('click', async () => {
     if (!serverSession.online || !serverSession.token) return;
