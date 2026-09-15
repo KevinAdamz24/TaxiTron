@@ -43,6 +43,7 @@
       withdrawAddressPlaceholder: 'UQ… TON wallet address',
       withdrawAmountPlaceholder: 'Amount (min 1 TON)',
       withdrawBtn: 'Request Withdrawal',
+      withdrawFee: 'A 1% withdrawal fee is deducted. You receive 99% of the requested amount.',
       withdrawNote: 'Minimum withdrawal is 1 TON. Requests are reviewed and sent to your wallet address.',
       withdrawErrAddress: 'Enter a valid TON wallet address.',
       withdrawErrMin: 'Minimum withdrawal is 1 TON.',
@@ -134,6 +135,7 @@
       withdrawAddressPlaceholder: 'آدرس کیف پول تون (UQ…)',
       withdrawAmountPlaceholder: 'مبلغ (حداقل ۱ تون)',
       withdrawBtn: 'درخواست برداشت',
+      withdrawFee: 'کارمزد برداشت ۱٪ کسر می‌شود. شما ۹۹٪ مبلغ درخواستی را دریافت می‌کنید.',
       withdrawNote: 'حداقل مبلغ برداشت ۱ تون است. درخواست‌ها بررسی و به کیف پول شما ارسال می‌شوند.',
       withdrawErrAddress: 'یک آدرس معتبر کیف پول تون وارد کنید.',
       withdrawErrMin: 'حداقل مبلغ برداشت ۱ تون است.',
@@ -1332,6 +1334,7 @@
 
   /* ================= WITHDRAW (TON) ================= */
   const MIN_WITHDRAW = 1;
+  const WITHDRAWAL_FEE_RATE = 0.01;
   function getTodayWithdrawalKey(){
     const parts = new Intl.DateTimeFormat('en-CA', {
       timeZone: 'Europe/Berlin',
@@ -1401,6 +1404,8 @@
     const address = addressInput.value.trim();
     const amount = parseFloat(amountInput.value);
     const btn = document.getElementById('withdrawBtn');
+    const fee = Number((amount * WITHDRAWAL_FEE_RATE).toFixed(6));
+    const netAmount = Number((amount - fee).toFixed(6));
 
     if (hasWithdrawnToday()){
       setWithdrawStatus('You already withdrew today. You can request another withdrawal tomorrow.', 'error');
@@ -1447,7 +1452,7 @@
     store.lastWithdrawalDay = getTodayWithdrawalKey();
     // Use the server's own withdrawal record (same ts the admin panel uses)
     // whenever we have one, so later status syncs can match it up.
-    store.withdrawals.push(serverWithdrawal || { address, amount, status: 'pending', ts: Date.now() });
+    store.withdrawals.push(serverWithdrawal || { address, amount: netAmount, grossAmount: amount, fee, status: 'pending', ts: Date.now() });
     saveStore();
     setWithdrawStatus(t('withdrawSuccess'), 'success');
     renderWithdrawUI();
