@@ -18,7 +18,8 @@
   .hud-seg { font-size:17px; letter-spacing:.2px; white-space:nowrap; }
   .hud-seg b { font-weight:800; }
   .hud-sep { opacity:.28; font-weight:400; }
-  .hud-level { color:#ffd93d; }
+  .hud-level { color:#ffd93d; display:inline-flex; align-items:baseline; gap:4px; max-width:190px; }
+  .hud-level #hudLevelName{ max-width:92px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; color:#fff1b0; vertical-align:baseline; }
   .hud-level small { font-size:11px; opacity:0.75; margin-left:2px; color:#a8a3b8; }
   #weaponHud {
     position:absolute; top:24vh; left:50%; transform:translateX(-50%);
@@ -122,7 +123,9 @@
   .stat-row{ display:flex; gap:10px; }
   .stat-card{ flex:1; background:#15151f; border:1px solid #262436; border-radius:12px; padding:12px 12px; }
   .stat-card .label{ font-size:0.68rem; color:#8b86a0; letter-spacing:0.4px; }
-  .stat-card .value{ font-size:1.2rem; font-weight:800; margin-top:2px; }
+  .stat-card .value{ font-size:1.2rem; font-weight:800; margin-top:2px; min-width:0; }
+  #homeLevel{ display:flex; align-items:baseline; gap:4px; min-width:0; }
+  #homeLevelName{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .stat-card.gold .value{ color:#ffd93d; }
   .stat-card.coral .value{ color:#ff6b6b; }
   .stat-card .value small{ font-size:0.6rem; color:#8b86a0; margin-left:2px; }

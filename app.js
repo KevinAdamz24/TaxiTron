@@ -31,8 +31,8 @@
       skinSelected: 'Selected ✓',
       levelLocked: 'Level 2 active',
       skinSelectBtn: 'Select',
-      skinNameYellow: 'Classic Yellow', skinNameRed: 'Crimson Red', skinNameWhite: 'Arctic White',
-      skinNameGreen: 'Jungle Camo', skinNameBlack: 'Midnight Gold',
+      skinNameYellow: 'Lost City', skinNameRed: 'Red Zone', skinNameWhite: 'Blue Bay',
+      skinNameGreen: 'Yellow Road', skinNameBlack: 'White Peak',
       skinPerDay: 'day', skinPerDayFor: 'per day for', skinDays: 'days',
       skinDaysLeft: 'days left', skinRewardActive: 'Daily reward active',
       skinTodayLeft: 'Today: {amount} TON left',
@@ -122,8 +122,8 @@
       skinSelected: 'انتخاب شد ✓',
       levelLocked: 'سطح ۲ فعال است',
       skinSelectBtn: 'انتخاب',
-      skinNameYellow: 'زرد کلاسیک', skinNameRed: 'قرمز زرشکی', skinNameWhite: 'سفید یخی',
-      skinNameGreen: 'کاموفلاژ سبز', skinNameBlack: 'طلایی نیمه‌شب',
+      skinNameYellow: 'شهر گمشده', skinNameRed: 'منطقه قرمز', skinNameWhite: 'خلیج آبی',
+      skinNameGreen: 'جاده زرد', skinNameBlack: 'قله سفید',
       skinPerDay: 'روز', skinPerDayFor: 'در روز به مدت', skinDays: 'روز',
       skinDaysLeft: 'روز باقی‌مانده', skinRewardActive: 'پاداش روزانه فعال است',
       skinTodayLeft: 'امروز: {amount} تون باقی‌مانده',
@@ -592,6 +592,10 @@
   loadActiveAttemptState();
   saveStore();
   function getCoinsPerZombie(){ const level = activeAttemptLevel(); return level >= 4 ? 100 : level >= 3 ? 20 : level >= 2 ? 7 : 1; }
+  function getLevelName(level){
+    const nameKeys = { 1:'skinNameYellow', 2:'skinNameRed', 3:'skinNameWhite', 4:'skinNameGreen', 5:'skinNameBlack' };
+    return t(nameKeys[Number(level)] || nameKeys[1]);
+  }
   function updateExchangeRateUI(){
     const rate = getCoinsPerZombie();
     document.querySelectorAll('[data-i18n="howto4"], [data-i18n="exchangeRateLabel"], [data-i18n="exchangeBtn"], [data-i18n="walletExchangeInfo"]').forEach(el => {
@@ -827,7 +831,9 @@
     document.getElementById('homeRuns').textContent = store.runs;
     const selectedLevel = activeAttemptLevel();
     store.level = selectedLevel;
-    document.getElementById('homeLevel').innerHTML = selectedLevel + '<small>·' + LEVEL_MULTIPLIER + '</small>';
+    const homeLevelName = document.getElementById('homeLevelName');
+    if (homeLevelName) homeLevelName.textContent = getLevelName(selectedLevel);
+    document.getElementById('homeLevel').querySelector('small').textContent = selectedLevel + ' ·' + LEVEL_MULTIPLIER;
     const balanceCard = document.querySelector('.balance-card');
     if (balanceCard){
       balanceCard.classList.toggle('level-2', selectedLevel === 2);
@@ -2779,6 +2785,8 @@ const GAME_TAXI_YELLOW_URI = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAfEA
     if (lblEl) lblEl.textContent = t('statLevel');
     const lvlEl = document.getElementById('hudLevel');
     if (lvlEl) lvlEl.textContent = currentLevel;
+    const hudLevelName = document.getElementById('hudLevelName');
+    if (hudLevelName) hudLevelName.textContent = getLevelName(currentLevel);
     const multEl = document.getElementById('hudMult');
     if (multEl) multEl.textContent = '·' + LEVEL_MULTIPLIER;
   }
