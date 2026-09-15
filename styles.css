@@ -124,8 +124,9 @@
   .stat-card{ flex:1; background:#15151f; border:1px solid #262436; border-radius:12px; padding:12px 12px; }
   .stat-card .label{ font-size:0.68rem; color:#8b86a0; letter-spacing:0.4px; }
   .stat-card .value{ font-size:1.2rem; font-weight:800; margin-top:2px; min-width:0; }
-  #homeLevel{ display:flex; align-items:baseline; gap:4px; min-width:0; }
-  #homeLevelName{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #homeLevel{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; min-width:0; line-height:1.05; }
+  #homeLevelName{ display:block; width:100%; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:center; font-size:.68rem; }
+  #homeLevel small{ display:block; margin-left:0; font-size:.58rem; line-height:1; }
   .stat-card.gold .value{ color:#ffd93d; }
   .stat-card.coral .value{ color:#ff6b6b; }
   .stat-card .value small{ font-size:0.6rem; color:#8b86a0; margin-left:2px; }
