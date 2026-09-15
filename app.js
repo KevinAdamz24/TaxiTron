@@ -337,18 +337,16 @@
   function getDailyPtsCap(){ return getLevelDailyPtsCap(activeAttemptLevel()); }
   function dailyEarningsComplete(){ return activeAttemptLevel() >= 2 && getCurrentLevelTodayPoints() >= getDailyPtsCap() - 1e-9; }
 
-  function getDayKey(date){
+  function todayStr(){
     const parts = new Intl.DateTimeFormat('en-CA', {
       timeZone: 'Europe/Berlin',
       year: 'numeric',
       month: '2-digit',
       day: '2-digit'
-    }).formatToParts(date || new Date());
+    }).formatToParts(new Date());
     const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
     return values.year + '-' + values.month + '-' + values.day;
   }
-  // Kept for backward compatibility with existing call sites.
-  function todayStr(){ return getDayKey(); }
   function ensureDailyReset(){
     const t = todayStr();
     if (store.pointsDate !== t){
@@ -395,13 +393,9 @@
     const level = activeAttemptLevel();
     const saved = store.attemptsByLevel && store.attemptsByLevel[level];
     if (saved) {
-      const maxAttempts = level >= 2 ? MAX_ATTEMPTS_LEVEL_TWO : MAX_ATTEMPTS_LEVEL_ONE;
-      store.attemptsLeft = Number.isFinite(Number(saved.left)) ? Number(saved.left) : maxAttempts;
-      // Server shape uses `day` (Europe/Berlin day key) for levels 2-4 and
-      // `resetAt` (cooldown timestamp) for level 1; normalize into the
-      // client's local fields either way.
+      store.attemptsLeft = Number.isFinite(Number(saved.left)) ? Number(saved.left) : level >= 2 ? 15 : 10;
       store.attemptsResetAt = saved.resetAt || null;
-      store.attemptsResetDay = saved.day || saved.resetDay || '';
+      store.attemptsResetDay = saved.resetDay || '';
     } else if (level >= 2) {
       store.attemptsLeft = 15;
       store.attemptsResetAt = null;
@@ -423,29 +417,25 @@
   function ensureAttempts(){
     ensureActiveAttemptState();
     if (!isAttemptLimited()) return;
-    const level = activeAttemptLevel();
     const maxAttempts = getMaxAttempts();
     const now = Date.now();
-    const currentDay = getDayKey();
-    if (level >= 2) {
-      // Reset must fire purely on day change, regardless of how many
-      // attempts remain \u2014 this was the bug: it used to only reset once
-      // attemptsLeft had reached 0, so unused attempts never rolled over.
-      if (store.attemptsResetDay !== currentDay) {
-        store.attemptsLeft = maxAttempts;
-        store.attemptsResetAt = null;
-        store.attemptsResetDay = currentDay;
-        saveStore();
-        return;
-      }
-      if (store.attemptsLeft < 0 || store.attemptsLeft > maxAttempts || !Number.isFinite(store.attemptsLeft)) {
-        store.attemptsLeft = maxAttempts;
-        saveStore();
-      }
+    let hasValidResetAt = Number.isFinite(store.attemptsResetAt) && store.attemptsResetAt > 0;
+    const currentDay = todayStr();
+    if (activeAttemptLevel() >= 2 && store.attemptsLeft === 0 && store.attemptsResetDay !== currentDay) {
+      store.attemptsLeft = maxAttempts;
+      store.attemptsResetAt = null;
+      store.attemptsResetDay = '';
+      saveStore();
       return;
     }
-    // Level 1 keeps its rolling cooldown reset (not day-based).
-    const hasValidResetAt = Number.isFinite(store.attemptsResetAt) && store.attemptsResetAt > 0;
+    if (activeAttemptLevel() >= 2 && store.attemptsLeft === 0) {
+      const midnight = nextBerlinMidnight();
+      if (!hasValidResetAt || store.attemptsResetAt > midnight) {
+        store.attemptsResetAt = midnight;
+        hasValidResetAt = true;
+        saveStore();
+      }
+    }
     if (!Number.isFinite(store.attemptsLeft) || (store.attemptsLeft === 0 && !hasValidResetAt)){
       store.attemptsLeft = maxAttempts;
       store.attemptsResetAt = null;
@@ -470,26 +460,12 @@
     if (!isAttemptLimited()) return true;
     ensureAttempts();
     if (store.attemptsLeft <= 0) return false;
-    const level = activeAttemptLevel();
     store.attemptsLeft -= 1;
     if (store.attemptsLeft === 0) {
       store.attemptsResetAt = getAttemptResetAt();
-      store.attemptsResetDay = level >= 2 ? getDayKey() : '';
+      store.attemptsResetDay = activeAttemptLevel() >= 2 ? todayStr() : '';
     }
     saveStore();
-    // Server is the source of truth: reconcile in the background so the
-    // next reload (or any other device) always reflects its authoritative count.
-    if (SERVER_URL && serverSession.online && serverSession.token) {
-      fetch(SERVER_URL + '/api/attempts/consume', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: serverSession.token, level })
-      }).then(res => res.json()).then(data => {
-        if (data && data.state) applyServerState(data.state);
-      }).catch(() => {
-        // offline/best-effort only; local optimistic count already applied
-      });
-    }
     return true;
   }
   function formatCountdown(ms){
@@ -1186,11 +1162,6 @@
     const activeLevelForProgressFinal = activeAttemptLevel();
     ensureLevelTodayState(activeLevelForProgressFinal);
     initializeOwnedPremiumAttempts();
-    // Server is the source of truth for ride attempts; always overwrite the
-    // local per-level cache with its fresh values (fixes stale/cached counts).
-    if (state.attemptsByLevel && typeof state.attemptsByLevel === 'object') {
-      store.attemptsByLevel = JSON.parse(JSON.stringify(state.attemptsByLevel));
-    }
     loadActiveAttemptState();
     saveStore();
     renderReferralUI(state);
@@ -1364,16 +1335,32 @@
   /* ================= WITHDRAW (TON) ================= */
   const MIN_WITHDRAW = 1;
   const WITHDRAWAL_FEE_RATE = 0.01;
-  function getTodayWithdrawalKey(){ return getDayKey(); }
+  function getTodayWithdrawalKey(){
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Europe/Berlin',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).formatToParts(new Date());
+    const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+    return values.year + '-' + values.month + '-' + values.day;
+  }
   function hasWithdrawnToday(){
-    const todayKey = getDayKey();
+    const todayKey = getTodayWithdrawalKey();
     if (store.lastWithdrawalDay === todayKey) return true;
     if (Array.isArray(store.withdrawals)) {
       return store.withdrawals.some((w) => {
         if (!w || !w.ts) return false;
         const d = new Date(Number(w.ts));
         if (Number.isNaN(d.getTime())) return false;
-        return getDayKey(d) === todayKey;
+        const parts = new Intl.DateTimeFormat('en-CA', {
+          timeZone: 'Europe/Berlin',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit'
+        }).formatToParts(d);
+        const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+        return values.year + '-' + values.month + '-' + values.day === todayKey;
       });
     }
     return false;

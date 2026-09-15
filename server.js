@@ -92,9 +92,6 @@ const LEVEL_THREE_DAILY_PTS_CAP = 0.2;
 const LEVEL_FOUR_DAILY_PTS_CAP = 0.66;
 const MIN_WITHDRAW = 1; // TON
 const WITHDRAWAL_FEE_RATE = 0.01;
-const MAX_ATTEMPTS_LEVEL_ONE = 10;
-const MAX_ATTEMPTS_LEVEL_TWO = 15;
-const ATTEMPT_COOLDOWN_LEVEL_ONE_MS = 2 * 60 * 60 * 1000;
 const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const INIT_DATA_MAX_AGE_MS = 24 * 60 * 60 * 1000; // reject stale Telegram auth payloads
 const MAX_ZOMBIES_PER_CALL = 2000; // basic anti-cheat ceiling
@@ -230,7 +227,6 @@ function newUser(id, name) {
     attemptsLeft: 10,
     attemptsResetAt: null,
     attemptResetVersion: 0,
-    attemptsByLevel: {},
     taskChannelRewardClaimed: false,
     withdrawChannelTaskRewardClaimed: false,
     adVideosWatched: 0,
@@ -341,39 +337,6 @@ function berlinWeekKey(date) {
   const start = new Date(b.getFullYear(), b.getMonth(), b.getDate() - dow);
   return start.getFullYear() + '-' + String(start.getMonth() + 1).padStart(2, '0') + '-' + String(start.getDate()).padStart(2, '0');
 }
-// Single source of truth for "what day is it in Europe/Berlin" — every daily
-// reset (earn cap, withdrawal limit, attempts, tasks) must key off this.
-const getDayKey = berlinDayKey;
-
-// Server-authoritative daily/cooldown reset for ride attempts per level.
-// Levels 2-4 reset at Berlin midnight regardless of how many attempts remain;
-// Level 1 resets on a rolling cooldown once fully depleted.
-function ensureAttemptsState(user) {
-  if (!user.attemptsByLevel || typeof user.attemptsByLevel !== 'object') user.attemptsByLevel = {};
-  const today = getDayKey();
-  const now = Date.now();
-  [1, 2, 3, 4].forEach((level) => {
-    const max = level >= 2 ? MAX_ATTEMPTS_LEVEL_TWO : MAX_ATTEMPTS_LEVEL_ONE;
-    let entry = user.attemptsByLevel[level];
-    if (level >= 2) {
-      if (!entry || entry.day !== today) {
-        entry = { left: max, day: today };
-      } else {
-        entry.left = Math.max(0, Math.min(max, Number(entry.left)));
-      }
-    } else {
-      if (!entry) {
-        entry = { left: max, resetAt: null };
-      } else if (entry.left <= 0 && Number.isFinite(entry.resetAt) && now >= entry.resetAt) {
-        entry = { left: max, resetAt: null };
-      } else {
-        entry.left = Math.max(0, Math.min(max, Number(entry.left)));
-      }
-    }
-    user.attemptsByLevel[level] = entry;
-  });
-  return user.attemptsByLevel;
-}
 
 function ensureDailyReset(user) {
   const today = berlinDayKey();
@@ -403,7 +366,6 @@ function ensureTournamentReset(user) {
 
 function publicState(user) {
   ensureDailyReset(user);
-  ensureAttemptsState(user);
   const ownedSkins = Array.isArray(user.ownedSkins) ? user.ownedSkins : ['yellow'];
   if (ownedSkins.indexOf('yellow') === -1) ownedSkins.unshift('yellow');
   user.ownedSkins = ownedSkins;
@@ -438,7 +400,6 @@ function publicState(user) {
     referralPendingZombies: Number(user.referralPendingZombies || 0),
     inviteRewardsClaimed: user.inviteRewardsClaimed && typeof user.inviteRewardsClaimed === 'object' ? user.inviteRewardsClaimed : {},
     attemptResetVersion: user.attemptResetVersion || 0,
-    attemptsByLevel: user.attemptsByLevel,
     taskChannelRewardClaimed: user.taskChannelRewardClaimed === true,
     withdrawChannelTaskRewardClaimed: user.withdrawChannelTaskRewardClaimed === true,
     adVideosWatched: Math.min(10, Math.max(0, Number(user.adVideosWatched) || 0)),
@@ -1366,24 +1327,6 @@ app.post('/api/rps/tournaments/play', requireUserFromBody, (req, res) => {
   res.json({ state: publicState(req.user), game: rpsTournamentPublic(game, uid) });
 });
 
-// ---- Ride attempts (server-authoritative daily/cooldown reset) ----
-app.post('/api/attempts/consume', requireUserFromBody, (req, res) => {
-  const user = req.user;
-  const requestedLevel = Number(req.body && req.body.level);
-  const level = requestedLevel >= 1 && requestedLevel <= 4 ? requestedLevel : (user.level || 1);
-  ensureAttemptsState(user);
-  const entry = user.attemptsByLevel[level];
-  if (!entry || entry.left <= 0) {
-    return res.status(409).json({ error: 'no-attempts-left', state: publicState(user) });
-  }
-  entry.left -= 1;
-  if (entry.left === 0 && level < 2) {
-    entry.resetAt = Date.now() + ATTEMPT_COOLDOWN_LEVEL_ONE_MS;
-  }
-  persist();
-  res.json({ ok: true, state: publicState(user) });
-});
-
 // ---- Withdraw ----
 function isPlausibleTonAddress(addr) {
   return typeof addr === 'string' && addr.trim().length >= 10 && !/\s/.test(addr.trim());
@@ -1653,7 +1596,6 @@ app.post('/admin/reset-users', requireAdmin, async (req, res) => {
     user.ownedSkins = ['yellow'];
     user.attemptsLeft = 10;
     user.attemptsResetAt = null;
-    user.attemptsByLevel = {};
     user.attemptResetVersion = Date.now();
     user.skinRewards = {};
     user.tournamentBest = 0;
