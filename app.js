@@ -417,25 +417,29 @@
   function ensureAttempts(){
     ensureActiveAttemptState();
     if (!isAttemptLimited()) return;
+    const level = activeAttemptLevel();
     const maxAttempts = getMaxAttempts();
     const now = Date.now();
-    let hasValidResetAt = Number.isFinite(store.attemptsResetAt) && store.attemptsResetAt > 0;
-    const currentDay = todayStr();
-    if (activeAttemptLevel() >= 2 && store.attemptsLeft === 0 && store.attemptsResetDay !== currentDay) {
-      store.attemptsLeft = maxAttempts;
-      store.attemptsResetAt = null;
-      store.attemptsResetDay = '';
-      saveStore();
-      return;
-    }
-    if (activeAttemptLevel() >= 2 && store.attemptsLeft === 0) {
-      const midnight = nextBerlinMidnight();
-      if (!hasValidResetAt || store.attemptsResetAt > midnight) {
-        store.attemptsResetAt = midnight;
-        hasValidResetAt = true;
+    if (level >= 2) {
+      // Daily reset must fire purely on day change, regardless of how many
+      // attempts remain \u2014 previously this only reset once attemptsLeft had
+      // reached 0, so unused attempts (e.g. 2/15, 7/15) never rolled over.
+      const currentDay = todayStr();
+      if (store.attemptsResetDay !== currentDay) {
+        store.attemptsLeft = maxAttempts;
+        store.attemptsResetAt = null;
+        store.attemptsResetDay = currentDay;
+        saveStore();
+        return;
+      }
+      if (!Number.isFinite(store.attemptsLeft) || store.attemptsLeft < 0 || store.attemptsLeft > maxAttempts){
+        store.attemptsLeft = maxAttempts;
         saveStore();
       }
+      return;
     }
+    // Level 1 keeps its rolling cooldown reset (not day-based).
+    const hasValidResetAt = Number.isFinite(store.attemptsResetAt) && store.attemptsResetAt > 0;
     if (!Number.isFinite(store.attemptsLeft) || (store.attemptsLeft === 0 && !hasValidResetAt)){
       store.attemptsLeft = maxAttempts;
       store.attemptsResetAt = null;
@@ -463,7 +467,6 @@
     store.attemptsLeft -= 1;
     if (store.attemptsLeft === 0) {
       store.attemptsResetAt = getAttemptResetAt();
-      store.attemptsResetDay = activeAttemptLevel() >= 2 ? todayStr() : '';
     }
     saveStore();
     return true;
