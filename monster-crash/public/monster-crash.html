@@ -368,8 +368,13 @@ function voiceOffer(peer){
   if(state.pc.signalingState!=='stable'){state.offerPending=true;return;}
   state.pc.createOffer().then(offer=>state.pc.setLocalDescription(offer)).then(()=>voiceSignal(peer,{description:state.pc.localDescription})).catch(error=>console.warn('[monster-crash] voice offer failed',error));
 }
-function voicePeer(id){
-  if(!me||id===me.id||voicePeers.has(id))return;
+function voicePeer(id,force=false){
+  if(!me||id===me.id)return;
+  if(voicePeers.has(id)){
+    if(!force)return;
+    const old=voicePeers.get(id);
+    old.pc.close();old.audio?.remove();voicePeers.delete(id);
+  }
   const pc=new RTCPeerConnection({iceServers:game&&game.iceServers&&game.iceServers.length?game.iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
   const state={pc,audio:null,sentStream:false,pendingCandidates:[],offerPending:false};
   voicePeers.set(id,state);
@@ -406,6 +411,7 @@ async function toggleVoice(){
     if(!voiceStream)voiceStream=await navigator.mediaDevices.getUserMedia({audio:true,video:false});
     voiceStream.getAudioTracks().forEach(track=>track.enabled=true);
     voiceEnabled=true;button.classList.add('on');button.textContent='🎙️ Turn mic off';
+    send({t:'voice-hello'});
     for(const [id,state] of voicePeers){
       if(!state.sentStream){
         state.pc.addTrack(voiceStream.getAudioTracks()[0],voiceStream);
@@ -444,7 +450,7 @@ function handle(m){
     case 'round':if(game)newRound(m);break;
     case 'out':if(game)onOut(m);break;
     case 'end':if(game)onEnd(m);break;
-    case 'voice-peer':voicePeer(m.id);break;
+    case 'voice-peer':voicePeer(m.id,true);break;
     case 'voice-signal':handleVoiceSignal(m);break;
   }
 }
