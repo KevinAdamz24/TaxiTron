@@ -337,12 +337,26 @@ function readInput(){
 const WS_URL=(location.protocol==='https:'?'wss://':'ws://')+location.host+'/mc';
 let ws=null,me=null,offset=0,lobby=null,game=null,view='connect';
 const send=m=>{if(ws&&ws.readyState===1)ws.send(JSON.stringify(m));};
-let voiceStream=null,voiceEnabled=false,voicePeers=new Map();
+let voiceStream=null,voiceEnabled=false,voicePeers=new Map(),voiceAudioContext=null,voiceAudioUnlocked=false;
 const voiceSupported=!!(window.RTCPeerConnection&&navigator.mediaDevices&&navigator.mediaDevices.getUserMedia);
+function unlockVoiceAudio(){
+  if(voiceAudioUnlocked)return;
+  try{
+    const AudioContext=window.AudioContext||window.webkitAudioContext;
+    if(AudioContext){
+      voiceAudioContext=voiceAudioContext||new AudioContext();
+      voiceAudioContext.resume();
+    }
+    voiceAudioUnlocked=true;
+    for(const peer of voicePeers.values())if(peer.audio)peer.audio.play().catch(()=>{});
+  }catch(error){console.warn('[monster-crash] audio output unlock failed',error);}
+}
 function voiceReset(){
   for(const peer of voicePeers.values()){peer.pc.close();peer.audio?.remove();}
   voicePeers.clear();
   if(voiceStream){voiceStream.getTracks().forEach(track=>track.stop());voiceStream=null;}
+  if(voiceAudioContext){voiceAudioContext.close().catch(()=>{});voiceAudioContext=null;}
+  voiceAudioUnlocked=false;
   voiceEnabled=false;
   const button=$('voice');
   button.classList.add('hidden');button.classList.remove('on');button.textContent='🎙️ Turn mic on';
@@ -351,21 +365,27 @@ function voiceSignal(peer,data){send({t:'voice-signal',data:{to:peer, ...data}})
 function voiceOffer(peer){
   const state=voicePeers.get(peer);
   if(!state)return;
-  state.pc.createOffer().then(offer=>state.pc.setLocalDescription(offer)).then(()=>voiceSignal(peer,{description:state.pc.localDescription}));
+  if(state.pc.signalingState!=='stable'){state.offerPending=true;return;}
+  state.pc.createOffer().then(offer=>state.pc.setLocalDescription(offer)).then(()=>voiceSignal(peer,{description:state.pc.localDescription})).catch(error=>console.warn('[monster-crash] voice offer failed',error));
 }
 function voicePeer(id){
   if(!me||id===me.id||voicePeers.has(id))return;
   const pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
-  const state={pc,audio:null,sentStream:false,pendingCandidates:[]};
+  const state={pc,audio:null,sentStream:false,pendingCandidates:[],offerPending:false};
   voicePeers.set(id,state);
   pc.addTransceiver('audio',{direction:'recvonly'});
   if(voiceStream){voiceStream.getTracks().forEach(track=>pc.addTrack(track,voiceStream));state.sentStream=true;}
   pc.onicecandidate=e=>{if(e.candidate)voiceSignal(id,{candidate:e.candidate});};
   pc.ontrack=e=>{
     const audio=document.createElement('audio');
-    audio.autoplay=true;audio.playsInline=true;audio.srcObject=e.streams[0];
+    audio.autoplay=true;audio.playsInline=true;audio.muted=false;audio.volume=1;audio.srcObject=e.streams[0];
     audio.dataset.voicePeer=id;document.body.appendChild(audio);state.audio=audio;
-    audio.play().catch(error=>console.warn('[monster-crash] remote voice playback was blocked',error));
+    const play=()=>audio.play().catch(error=>console.warn('[monster-crash] remote voice playback was blocked',error));
+    audio.oncanplay=play;
+    if(voiceAudioUnlocked)play();
+  };
+  pc.onsignalingstatechange=()=>{
+    if(pc.signalingState==='stable'&&state.offerPending){state.offerPending=false;voiceOffer(id);}
   };
   pc.onconnectionstatechange=()=>{
     if(['failed','closed','disconnected'].includes(pc.connectionState)){
@@ -376,6 +396,7 @@ function voicePeer(id){
 }
 async function toggleVoice(){
   const button=$('voice');
+  unlockVoiceAudio();
   if(!voiceSupported){toast('Voice chat is not supported in this browser.');return;}
   if(voiceEnabled){
     voiceStream.getAudioTracks().forEach(track=>track.enabled=false);
