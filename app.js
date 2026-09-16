@@ -2646,8 +2646,8 @@ const GAME_TAXI_YELLOW_URI = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAfEA
 
   function buildZombie(){
     const g = new THREE.Group();
-    const imgAspect = 508/520;
-    const height = 1.5;
+    const imgAspect = 349/504;
+    const height = 2.05;
     const width = height * imgAspect;
     const mat = new THREE.MeshBasicMaterial({
       map: zombieTexture,
