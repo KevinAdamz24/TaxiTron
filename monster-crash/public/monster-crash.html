@@ -83,7 +83,7 @@ button{font:inherit;cursor:pointer}
   <div class="stripe"></div>
   <div class="lobbyHead"><div><p class="lobbyKicker">Live Arena · Island Mode</p><h1 class="disp">MONSTER<br>CRASH</h1></div><p class="sub">Collect the most monsters.<br>The last place is eliminated.</p></div>
   <div class="lobbyGrid">
-    <div class="countdownPanel"><p class="countdownLabel">Round starts in</p><div class="lt disp" id="lTimer">5:00</div><div class="countdownRule"><i></i></div><p class="note" id="lState">Waiting for players</p></div>
+    <div class="countdownPanel"><p class="countdownLabel">Round starts in</p><div class="lt disp" id="lTimer">1:00</div><div class="countdownRule"><i></i></div><p class="note" id="lState">Waiting for players</p></div>
     <div class="lobbySide">
       <div class="lobbyStats"><div class="lobbyStat"><span>Players</span><b id="lCount">0/10</b></div><div class="lobbyStat"><span>Pot</span><b id="lPot">0 TON</b></div><div class="lobbyStat" id="balRow"><span>Your balance</span><b id="lBal">–</b></div><div class="lobbyStat"><span>Winner gets</span><b id="lPrize">0 TON</b></div></div>
       <div class="lobbyPlayersTitle"><span>Participants</span><span class="note">3 needed</span></div>
@@ -110,7 +110,7 @@ button{font:inherit;cursor:pointer}
   <div id="mybox"><b id="myName">You</b> · <b id="myMon">👾 0</b><div class="bar"><i id="myBoost" style="width:100%"></i></div></div>
   <div id="count" class="disp hidden">3</div>
   <div id="spect" class="disp hidden">Eliminated! You're watching</div>
-  <button id="voice" class="hidden" type="button">🎙️ Voice off</button>
+  <button id="voice" class="hidden" type="button">🎙️ Turn mic on</button>
   <div id="touch" class="hidden">
     <div id="joy"><div id="joyBase"><div id="knob"></div></div></div>
     <div id="tbtns"><button id="tBrake" aria-label="Brake">⬇</button><button id="tBoost" aria-label="Boost">⚡</button></div>
@@ -345,7 +345,7 @@ function voiceReset(){
   if(voiceStream){voiceStream.getTracks().forEach(track=>track.stop());voiceStream=null;}
   voiceEnabled=false;
   const button=$('voice');
-  button.classList.add('hidden');button.classList.remove('on');button.textContent='🎙️ Voice off';
+  button.classList.add('hidden');button.classList.remove('on');button.textContent='🎙️ Turn mic on';
 }
 function voiceSignal(peer,data){send({t:'voice-signal',data:{to:peer, ...data}});}
 function voiceOffer(peer){
@@ -376,12 +376,12 @@ async function toggleVoice(){
   if(!voiceSupported){toast('Voice chat is not supported in this browser.');return;}
   if(voiceEnabled){
     voiceStream.getAudioTracks().forEach(track=>track.enabled=false);
-    voiceEnabled=false;button.classList.remove('on');button.textContent='🎙️ Voice off';return;
+    voiceEnabled=false;button.classList.remove('on');button.textContent='🎙️ Turn mic on';return;
   }
   try{
     if(!voiceStream)voiceStream=await navigator.mediaDevices.getUserMedia({audio:true,video:false});
     voiceStream.getAudioTracks().forEach(track=>track.enabled=true);
-    voiceEnabled=true;button.classList.add('on');button.textContent='🎙️ Voice on';
+    voiceEnabled=true;button.classList.add('on');button.textContent='🎙️ Turn mic off';
     for(const [id,state] of voicePeers){
       if(!state.sentStream){
         state.pc.addTrack(voiceStream.getAudioTracks()[0],voiceStream);
@@ -460,11 +460,12 @@ function renderLobby(){
 }
 setInterval(()=>{
   if(!lobby)return;
-  if(!lobby.endsAt){$('lTimer').textContent='5:00';return;}
+  if(!lobby.endsAt){$('lTimer').textContent='1:00';return;}
   const s=Math.max(0,Math.ceil((lobby.endsAt-(Date.now()+offset))/1000));
   $('lTimer').textContent=`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
 },250);
 $('btnJoin').onclick=()=>{initAudio();if(inLobby())send({t:'leave'});else{$('btnJoin').disabled=true;send({t:'join'});}};
+$('voice').onclick=toggleVoice;
 $('btnBack').onclick=()=>{window.location.href='/';};
 
 // ---------- Game ----------
