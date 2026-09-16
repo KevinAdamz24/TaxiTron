@@ -17,6 +17,8 @@
  *   GET  /admin/stats
  *   GET  /admin/withdrawals?status=pending
  *   POST /admin/withdrawals/complete   { uid, ts }
+ *   GET  /admin/deposits
+ *   GET  /admin/purchases
  *
  * Storage: a single JSON file on disk (DATA_DIR/users.json), meant to
  * live on a Railway Volume. Writes are serialised through a tiny
@@ -236,6 +238,8 @@ function newUser(id, name) {
     tournamentDistance: 0,
     tournamentWeekKey: '',
     depositTxs: [],
+    deposits: [],
+    purchases: [],
     withdrawals: [],
     lastWithdrawalDay: '',
     referralCount: 0,
@@ -801,11 +805,15 @@ let titleBlinkTimer=null;
 let titleBlinkOn=false;
 function updateSoundButton(){const btn=document.getElementById('soundToggle');if(soundEnabled){btn.textContent='🔔 Sound on';btn.className='sound-on'}else{btn.textContent='🔔 Enable sound';btn.className='sound-off'}}
 function stopTitleBlink(){if(titleBlinkTimer){clearInterval(titleBlinkTimer);titleBlinkTimer=null}document.title=ORIGINAL_TITLE;titleBlinkOn=false}
-function startTitleBlink(){stopTitleBlink();titleBlinkTimer=setInterval(()=>{titleBlinkOn=!titleBlinkOn;document.title=titleBlinkOn?'🔔 Neue Auszahlung!':ORIGINAL_TITLE},900)}
+function startTitleBlink(msg){stopTitleBlink();const label=msg||'🔔 Neue Auszahlung!';titleBlinkTimer=setInterval(()=>{titleBlinkOn=!titleBlinkOn;document.title=titleBlinkOn?label:ORIGINAL_TITLE},900)}
 window.addEventListener('focus',stopTitleBlink);
 function playAlertSound(){if(!soundEnabled)return;try{if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==='suspended')audioCtx.resume();const now=audioCtx.currentTime;[0,0.22,0.44].forEach((offset,i)=>{const osc=audioCtx.createOscillator();const gain=audioCtx.createGain();osc.type='sine';osc.frequency.setValueAtTime(i%2===0?880:1320,now+offset);gain.gain.setValueAtTime(0,now+offset);gain.gain.linearRampToValueAtTime(0.35,now+offset+0.02);gain.gain.linearRampToValueAtTime(0,now+offset+0.18);osc.connect(gain);gain.connect(audioCtx.destination);osc.start(now+offset);osc.stop(now+offset+0.2)})}catch(error){console.warn('alert sound failed',error)}}
+function playPurchaseSound(){if(!soundEnabled)return;try{if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==='suspended')audioCtx.resume();const now=audioCtx.currentTime;const bufferSize=Math.floor(audioCtx.sampleRate*0.045);const buffer=audioCtx.createBuffer(1,bufferSize,audioCtx.sampleRate);const data=buffer.getChannelData(0);for(let i=0;i<bufferSize;i++){data[i]=(Math.random()*2-1)*(1-i/bufferSize)}const noise=audioCtx.createBufferSource();noise.buffer=buffer;const noiseFilter=audioCtx.createBiquadFilter();noiseFilter.type='highpass';noiseFilter.frequency.value=2500;const noiseGain=audioCtx.createGain();noiseGain.gain.setValueAtTime(0.3,now);noiseGain.gain.linearRampToValueAtTime(0,now+0.045);noise.connect(noiseFilter);noiseFilter.connect(noiseGain);noiseGain.connect(audioCtx.destination);noise.start(now);noise.stop(now+0.045);[[1568,now+0.05],[2093,now+0.17]].forEach(([freq,t])=>{const osc=audioCtx.createOscillator();osc.type='sine';osc.frequency.setValueAtTime(freq,t);const osc2=audioCtx.createOscillator();osc2.type='sine';osc2.frequency.setValueAtTime(freq*2.01,t);const gain=audioCtx.createGain();gain.gain.setValueAtTime(0,t);gain.gain.linearRampToValueAtTime(0.32,t+0.015);gain.gain.exponentialRampToValueAtTime(0.001,t+0.55);const gain2=audioCtx.createGain();gain2.gain.setValueAtTime(0,t);gain2.gain.linearRampToValueAtTime(0.09,t+0.015);gain2.gain.exponentialRampToValueAtTime(0.0008,t+0.4);osc.connect(gain);gain.connect(audioCtx.destination);osc2.connect(gain2);gain2.connect(audioCtx.destination);osc.start(t);osc.stop(t+0.55);osc2.start(t);osc2.stop(t+0.4)})}catch(error){console.warn('purchase sound failed',error)}}
 document.getElementById('soundToggle').onclick=()=>{soundEnabled=!soundEnabled;localStorage.setItem('taxitron_admin_sound',soundEnabled?'1':'0');updateSoundButton();if(soundEnabled)playAlertSound()};
 updateSoundButton();
+let knownDepositKeys=null;
+let knownPurchaseKeys=null;
+async function pollMoneyEvents(){const s=secret();if(!s)return;try{const [dr,pr]=await Promise.all([fetch('/admin/deposits',{headers:{'x-admin-secret':s}}),fetch('/admin/purchases',{headers:{'x-admin-secret':s}})]);let newEvent=false;if(dr.ok){const dd=await dr.json();const keys=new Set((dd.deposits||[]).map(x=>x.uid+'_'+x.ts));if(knownDepositKeys===null){knownDepositKeys=keys}else{if((dd.deposits||[]).some(x=>!knownDepositKeys.has(x.uid+'_'+x.ts)))newEvent=true;knownDepositKeys=keys}}if(pr.ok){const pd=await pr.json();const keys=new Set((pd.purchases||[]).map(x=>x.uid+'_'+x.ts));if(knownPurchaseKeys===null){knownPurchaseKeys=keys}else{if((pd.purchases||[]).some(x=>!knownPurchaseKeys.has(x.uid+'_'+x.ts)))newEvent=true;knownPurchaseKeys=keys}}if(newEvent){playPurchaseSound();startTitleBlink('🛒 Neuer Kauf!')}}catch(error){console.warn('poll money events failed',error)}}
 async function load(){currentView='players';const s=secret();if(!s){status('ADMIN_SECRET eingeben.');return}status('Spieler werden geladen...');const r=await fetch('/admin/players',{headers:{'x-admin-secret':s}});const d=await r.json();if(!r.ok){status(d.error||'Request failed');return}document.getElementById('stats').innerHTML='<div class="stat"><span>Registrierte Spieler</span><b>'+d.totalUsers+'</b></div><div class="stat"><span>Spieler mit Einzahlung</span><b>'+d.depositUsers+'</b></div><div class="stat"><span>TON gesamt</span><b>'+Number(d.totalTon).toFixed(6)+'</b></div><div class="stat"><span>Einladungen gesamt</span><b>'+d.totalReferrals+'</b></div><div class="stat"><span>Referral-Belohnungen</span><b>'+d.totalReferralRewards+' x 300</b></div><div class="stat"><span>Referral-Zombies</span><b>'+d.totalReferralRewardZombies+'</b></div>';const list=document.getElementById('list');list.innerHTML='<div class="row"><b>Spieler</b><b>TON-Guthaben</b><b>Coins</b><b>Level</b><b>Einzahlungen</b><b>Runs</b><b>Referral</b><b>Aktion</b></div>';d.players.forEach(p=>{const row=document.createElement('div');row.className='row';row.innerHTML='<span>'+p.name+'<br><span class="muted">UID '+p.uid+'</span></span><span>'+Number(p.ton).toFixed(6)+' TON</span><span>'+p.coins+'</span><span>'+p.level+'</span><span>'+p.depositCount+'</span><span>'+p.runs+'</span><span>'+p.referralCount+' eingeladen<br>'+p.referralRewardCount+' Belohnungen · '+p.referralRewardZombies+' Zombies<br>'+p.referralLink+'</span><span></span>';const actionCell=row.lastElementChild;const resetBtn=document.createElement('button');resetBtn.textContent='🔄 Reset attempts';resetBtn.className='reset-attempts';resetBtn.onclick=async()=>{if(!confirm('Versuche für '+p.name+' (UID '+p.uid+') auf 15/15 zurücksetzen?'))return;resetBtn.disabled=true;resetBtn.textContent='...';try{const rr=await fetch('/admin/users/'+encodeURIComponent(p.uid)+'/reset-attempts',{method:'POST',headers:{'x-admin-secret':s}});const dd=await rr.json();if(rr.ok){resetBtn.textContent='✓ Reset';status('Versuche für '+p.name+' zurückgesetzt.');setTimeout(()=>{resetBtn.textContent='🔄 Reset attempts';resetBtn.disabled=false},1500)}else{status(dd.error||'Reset failed');resetBtn.textContent='🔄 Reset attempts';resetBtn.disabled=false}}catch(error){status('Reset failed');resetBtn.textContent='🔄 Reset attempts';resetBtn.disabled=false}};actionCell.appendChild(resetBtn);list.appendChild(row)});status(d.totalUsers+' Spieler geladen.')}
 async function loadWithdrawals(opts){const silent=opts&&opts.silent;const s=secret();if(!s){if(!silent)status('ADMIN_SECRET eingeben.');return}if(!silent)status('Auszahlungen werden geladen...');let r,d;try{r=await fetch('/admin/withdrawals?status=pending',{headers:{'x-admin-secret':s}});d=await r.json()}catch(error){if(!silent)status('Request failed');return}if(!r.ok){if(!silent)status(d.error||'Request failed');return}
 const currentKeys=new Set(d.withdrawals.map(w=>w.uid+'_'+w.ts));
@@ -821,6 +829,7 @@ document.getElementById('load').onclick=load;
 document.getElementById('loadWithdrawals').onclick=()=>loadWithdrawals();
 document.getElementById('reset').onclick=async()=>{const s=secret();if(!s){status('Enter the admin secret.');return}if(!confirm("WARNING: This resets all players' coins, TON, level, skins, stats, and withdrawals. Deposits remain protected. Continue?"))return;status('Resetting all players...');const r=await fetch('/admin/reset-users',{method:'POST',headers:{'x-admin-secret':s}});const d=await r.json();status(r.ok?'Reset complete for '+d.count+' players.':(d.error||'Reset failed'));if(r.ok)load()};
 setInterval(()=>{if(secret())loadWithdrawals({silent:true})},15000);
+setInterval(()=>{if(secret())pollMoneyEvents()},15000);
 </script></body></html>`);
 });
 
@@ -900,6 +909,9 @@ app.post('/api/buy-skin', requireUserFromBody, (req, res) => {
   user.level = Math.max(user.level || 1, levels[key]);
   if (!user.skinRewards || typeof user.skinRewards !== 'object') user.skinRewards = {};
   user.skinRewards[key] = { remainingDays: 30, expiresAt: Date.now() + 30 * 86400000, lastCreditDate: berlinDayKey(), lastEarnedDate: '' };
+  if (!Array.isArray(user.purchases)) user.purchases = [];
+  user.purchases.push({ ts: Date.now(), key, price, level: levels[key] });
+  if (user.purchases.length > 200) user.purchases = user.purchases.slice(-200);
   persist();
   res.json({ state: publicState(user) });
 });
@@ -1064,11 +1076,15 @@ async function scanDeposits() {
         if (!Array.isArray(user.depositTxs)) user.depositTxs = [];
         const txId = String(event.event_id || '').toLowerCase();
         if (!txId || user.depositTxs.includes(txId)) continue;
-        user.ton += Number(transfer.amount) / 1e9;
+        const amountTon = Number(transfer.amount) / 1e9;
+        user.ton += amountTon;
         user.depositTxs.push(txId);
         if (user.depositTxs.length > 200) user.depositTxs = user.depositTxs.slice(-200);
+        if (!Array.isArray(user.deposits)) user.deposits = [];
+        user.deposits.push({ ts: Date.now(), amount: amountTon, txId });
+        if (user.deposits.length > 200) user.deposits = user.deposits.slice(-200);
         changed = true;
-        console.log('[deposit] credited ' + (Number(transfer.amount) / 1e9) + ' TON to user ' + user.id);
+        console.log('[deposit] credited ' + amountTon + ' TON to user ' + user.id);
       }
     }
     if (changed) persist();
@@ -1107,6 +1123,9 @@ app.post('/api/deposit/claim', requireUserFromBody, async (req, res) => {
     user.ton += amount;
     user.depositTxs.push(txHash);
     if (user.depositTxs.length > 200) user.depositTxs = user.depositTxs.slice(-200);
+    if (!Array.isArray(user.deposits)) user.deposits = [];
+    user.deposits.push({ ts: Date.now(), amount, txId: txHash });
+    if (user.deposits.length > 200) user.deposits = user.deposits.slice(-200);
     persist();
     res.json({ state: publicState(user), amount });
   } catch (e) {
@@ -1580,6 +1599,26 @@ app.get('/admin/withdrawals', requireAdmin, (req, res) => {
   }));
   out.sort((a, b) => b.ts - a.ts);
   res.json({ withdrawals: out });
+});
+
+app.get('/admin/deposits', requireAdmin, (req, res) => {
+  const out = [];
+  Object.values(users).forEach((u) => (u.deposits || []).forEach((d) => {
+    out.push({ uid: u.id, name: u.name, ...d });
+  }));
+  out.sort((a, b) => b.ts - a.ts);
+  out.length = Math.min(out.length, 100);
+  res.json({ deposits: out });
+});
+
+app.get('/admin/purchases', requireAdmin, (req, res) => {
+  const out = [];
+  Object.values(users).forEach((u) => (u.purchases || []).forEach((p) => {
+    out.push({ uid: u.id, name: u.name, ...p });
+  }));
+  out.sort((a, b) => b.ts - a.ts);
+  out.length = Math.min(out.length, 100);
+  res.json({ purchases: out });
 });
 
 app.post('/admin/withdrawals/complete', requireAdmin, (req, res) => {
