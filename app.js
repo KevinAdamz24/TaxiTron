@@ -1306,7 +1306,7 @@
     button.disabled = true;
     statusEl.textContent = 'Loading video...';
     try {
-      const controller = window.Adsgram.init({ blockId: '48014' });
+      const controller = window.Adsgram.init({ blockId: '48235' });
       await controller.show();
       await new Promise(resolve => setTimeout(resolve, 700));
       const response = await fetch(SERVER_URL + '/api/referrals/status?token=' + encodeURIComponent(serverSession.token));
