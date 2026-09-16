@@ -358,18 +358,21 @@ function voicePeer(id){
   const pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
   const state={pc,audio:null,sentStream:false};
   voicePeers.set(id,state);
+  pc.addTransceiver('audio',{direction:'recvonly'});
   if(voiceStream){voiceStream.getTracks().forEach(track=>pc.addTrack(track,voiceStream));state.sentStream=true;}
   pc.onicecandidate=e=>{if(e.candidate)voiceSignal(id,{candidate:e.candidate});};
   pc.ontrack=e=>{
     const audio=document.createElement('audio');
     audio.autoplay=true;audio.playsInline=true;audio.srcObject=e.streams[0];
     audio.dataset.voicePeer=id;document.body.appendChild(audio);state.audio=audio;
+    audio.play().catch(error=>console.warn('[monster-crash] remote voice playback was blocked',error));
   };
   pc.onconnectionstatechange=()=>{
     if(['failed','closed','disconnected'].includes(pc.connectionState)){
       state.audio?.remove();voicePeers.delete(id);
     }
   };
+  if(String(me.id)<String(id))voiceOffer(id);
 }
 async function toggleVoice(){
   const button=$('voice');
