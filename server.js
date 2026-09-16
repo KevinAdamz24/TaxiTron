@@ -45,6 +45,8 @@ const cors = require('cors');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const http = require('http');
+const { attachMonsterCrash } = require('./monster-crash/monster-crash');
 
 // ---------------------------------------------------------------
 // Config
@@ -821,6 +823,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.static(__dirname, { index: false }));
+app.use('/monster-crash', express.static(path.join(__dirname, 'monster-crash', 'public'), { index: 'monster-crash.html' }));
 
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
@@ -1752,7 +1755,64 @@ function shutdown(signal) {
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
 
-app.listen(PORT, () => {
+// ---------------------------------------------------------------
+// Monster Crash: multiplayer arena mini-game, mounted on the same
+// Express app/HTTP server (WebSocket at /mc, static files at
+// /monster-crash). Stakes/payouts run through the same TON balance
+// as the rest of TaxiTron (users[uid].ton, in whole TON, converted
+// to/from nanoTON for the monster-crash module).
+// ---------------------------------------------------------------
+function tonToNano(ton) { return Math.round(Number(ton || 0) * 1e9); }
+function nanoToTon(nano) { return Number(nano || 0) / 1e9; }
+
+function verifyMonsterCrashUser(initData) {
+  if (typeof initData === 'string' && initData.indexOf('test:') === 0 && !ON_RAILWAY) {
+    const parts = initData.split(':');
+    const id = String(parts[1] || 'test');
+    const name = parts[2] || ('Test ' + id);
+    if (!users[id]) { users[id] = newUser(id, name); persist(); }
+    return { id, name: users[id].name || name };
+  }
+  const result = verifyInitData(initData);
+  if (!result.ok) return null;
+  const id = String(result.id);
+  if (!users[id]) { users[id] = newUser(id, result.name); persist(); }
+  return { id, name: users[id].name || result.name };
+}
+
+const monsterCrashEconomy = {
+  async charge(userId, nano, reason) {
+    const user = users[userId];
+    if (!user) return false;
+    const amount = nanoToTon(nano);
+    if (Number(user.ton || 0) < amount - 1e-9) return false;
+    user.ton = Number((Number(user.ton || 0) - amount).toFixed(9));
+    persist();
+    return true;
+  },
+  async credit(userId, nano, reason) {
+    const user = users[userId];
+    if (!user) return;
+    user.ton = Number((Number(user.ton || 0) + nanoToTon(nano)).toFixed(9));
+    persist();
+  },
+  async creditApp(nano, reason) {
+    if (PLATFORM_USER_ID && users[PLATFORM_USER_ID]) {
+      const platformUser = users[PLATFORM_USER_ID];
+      platformUser.ton = Number((Number(platformUser.ton || 0) + nanoToTon(nano)).toFixed(9));
+      persist();
+    }
+  },
+  async getBalance(userId) {
+    const user = users[userId];
+    return user ? tonToNano(user.ton) : 0;
+  },
+};
+
+const server = http.createServer(app);
+attachMonsterCrash(server, { verifyUser: verifyMonsterCrashUser, economy: monsterCrashEconomy });
+
+server.listen(PORT, () => {
   console.log('TaxiTron server listening on port ' + PORT);
   console.log('[storage] data file: ' + DATA_FILE + ' (' + Object.keys(users).length + ' users loaded)');
   if (!STORAGE_PERSISTENT) {
