@@ -2617,7 +2617,7 @@ const GAME_TAXI_YELLOW_URI = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAfEA
     // images are cropped tight to the visible object (no transparent padding),
     // so the bottom edge of the sprite is the bottom of the tree / wreck
     const imgAspect = 1;
-    const height = isTree ? 3.2 : 3.6;
+    const height = isTree ? 3.2 : 4.6;
     const width = height * imgAspect;
     const skinMat = new THREE.MeshBasicMaterial({
       map: tex,
