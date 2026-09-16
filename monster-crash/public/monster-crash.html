@@ -47,6 +47,9 @@ button{font:inherit;cursor:pointer}
 #tbtns{position:absolute;right:18px;bottom:36px;display:flex;gap:14px;pointer-events:auto}
 #tbtns button{width:74px;height:74px;border-radius:50%;border:3px solid #fff;font-size:30px;background:rgba(21,22,26,.6);color:#fff}
 #tbtns button.on{background:var(--nitro)}
+#voice{position:fixed;right:12px;bottom:12px;z-index:9;padding:10px 13px;border:2px solid #fff;border-radius:4px;background:rgba(21,22,26,.82);color:#fff;font:700 13px Rubik,system-ui,sans-serif}
+#voice.on{background:var(--ok);color:var(--ink);border-color:var(--ok)}
+#voice:disabled{opacity:.55}
 .row{display:flex;justify-content:space-between;padding:6px 4px;border-bottom:1px solid rgba(255,255,255,.12);font-weight:700}
 .row.me{color:var(--hazard)}
 .lobbyCard{width:min(860px,94vw);padding:30px;position:relative;overflow:hidden;text-align:left;background:linear-gradient(135deg,rgba(21,22,26,.96),rgba(35,45,50,.94));border-color:#39b8ff}
@@ -107,6 +110,7 @@ button{font:inherit;cursor:pointer}
   <div id="mybox"><b id="myName">You</b> · <b id="myMon">👾 0</b><div class="bar"><i id="myBoost" style="width:100%"></i></div></div>
   <div id="count" class="disp hidden">3</div>
   <div id="spect" class="disp hidden">Eliminated! You're watching</div>
+  <button id="voice" class="hidden" type="button">🎙️ Voice off</button>
   <div id="touch" class="hidden">
     <div id="joy"><div id="joyBase"><div id="knob"></div></div></div>
     <div id="tbtns"><button id="tBrake" aria-label="Brake">⬇</button><button id="tBoost" aria-label="Boost">⚡</button></div>
@@ -306,7 +310,7 @@ function makeCar(p,isMe){
   const wheels=[];for(const [x,z] of [[1.1,1.25],[-1.1,1.25],[1.1,-1.25],[-1.1,-1.25]]){const w=new THREE.Mesh(wheelGeo,tire);w.position.set(x,.5,z);g.add(w);wheels.push(w);}
   if(!isMe)g.add(nameSprite(p.name,color));
   scene.add(g);
-  return {id:p.id,name:p.name,color,g,wheels,x:p.x,z:p.z,a:p.a,tx:p.x,tz:p.z,ta:p.a,vx:0,vz:0,boost:100,boosting:false,monsters:0,out:!!p.out,me:isMe,roll:0};
+  return {id:p.id,name:p.name,color,g,wheels,x:p.x,z:p.z,a:p.a,tx:p.x,tz:p.z,ta:p.a,vx:0,vz:0,boost:100,boosting:false,monsters:0,total:0,out:!!p.out,me:isMe,roll:0};
 }
 
 // ---------- Input ----------
@@ -333,6 +337,60 @@ function readInput(){
 const WS_URL=(location.protocol==='https:'?'wss://':'ws://')+location.host+'/mc';
 let ws=null,me=null,offset=0,lobby=null,game=null,view='connect';
 const send=m=>{if(ws&&ws.readyState===1)ws.send(JSON.stringify(m));};
+let voiceStream=null,voiceEnabled=false,voicePeers=new Map();
+const voiceSupported=!!(window.RTCPeerConnection&&navigator.mediaDevices&&navigator.mediaDevices.getUserMedia);
+function voiceReset(){
+  for(const peer of voicePeers.values()){peer.pc.close();peer.audio?.remove();}
+  voicePeers.clear();
+  if(voiceStream){voiceStream.getTracks().forEach(track=>track.stop());voiceStream=null;}
+  voiceEnabled=false;
+  const button=$('voice');
+  button.classList.add('hidden');button.classList.remove('on');button.textContent='🎙️ Voice off';
+}
+function voiceSignal(peer,data){send({t:'voice-signal',data:{to:peer, ...data}});}
+function voiceOffer(peer){
+  const state=voicePeers.get(peer);
+  if(!state)return;
+  state.pc.createOffer().then(offer=>state.pc.setLocalDescription(offer)).then(()=>voiceSignal(peer,{description:state.pc.localDescription}));
+}
+function voicePeer(id){
+  if(!me||id===me.id||voicePeers.has(id))return;
+  const pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
+  const state={pc,audio:null,sentStream:false};
+  voicePeers.set(id,state);
+  if(voiceStream){voiceStream.getTracks().forEach(track=>pc.addTrack(track,voiceStream));state.sentStream=true;}
+  pc.onicecandidate=e=>{if(e.candidate)voiceSignal(id,{candidate:e.candidate});};
+  pc.ontrack=e=>{
+    const audio=document.createElement('audio');
+    audio.autoplay=true;audio.playsInline=true;audio.srcObject=e.streams[0];
+    audio.dataset.voicePeer=id;document.body.appendChild(audio);state.audio=audio;
+  };
+  pc.onconnectionstatechange=()=>{
+    if(['failed','closed','disconnected'].includes(pc.connectionState)){
+      state.audio?.remove();voicePeers.delete(id);
+    }
+  };
+}
+async function toggleVoice(){
+  const button=$('voice');
+  if(!voiceSupported){toast('Voice chat is not supported in this browser.');return;}
+  if(voiceEnabled){
+    voiceStream.getAudioTracks().forEach(track=>track.enabled=false);
+    voiceEnabled=false;button.classList.remove('on');button.textContent='🎙️ Voice off';return;
+  }
+  try{
+    if(!voiceStream)voiceStream=await navigator.mediaDevices.getUserMedia({audio:true,video:false});
+    voiceStream.getAudioTracks().forEach(track=>track.enabled=true);
+    voiceEnabled=true;button.classList.add('on');button.textContent='🎙️ Voice on';
+    for(const [id,state] of voicePeers){
+      if(!state.sentStream){
+        state.pc.addTrack(voiceStream.getAudioTracks()[0],voiceStream);
+        state.sentStream=true;
+      }
+      voiceOffer(id);
+    }
+  }catch(error){console.error('[monster-crash] microphone access failed',error);toast('Microphone access was denied.');}
+}
 let authData=tg&&tg.initData?tg.initData:null;
 function testLogin(){
   $('connMsg').textContent='Connecting test mode…';
@@ -348,7 +406,7 @@ function connect(){
   ws=new WebSocket(WS_URL);
   ws.onopen=()=>send({t:'auth',initData:authData});
   ws.onmessage=e=>{let m;try{m=JSON.parse(e.data);}catch{return;}handle(m);};
-  ws.onclose=()=>{if(view==='connect'||view==='lobby'){screen('connect');view='connect';}$('connMsg').textContent='Connection lost – reconnecting…';setTimeout(connect,2000);};
+  ws.onclose=()=>{voiceReset();if(view==='connect'||view==='lobby'){screen('connect');view='connect';}$('connMsg').textContent='Connection lost – reconnecting…';setTimeout(connect,2000);};
 }
 function handle(m){
   switch(m.t){
@@ -362,6 +420,24 @@ function handle(m){
     case 'round':if(game)newRound(m);break;
     case 'out':if(game)onOut(m);break;
     case 'end':if(game)onEnd(m);break;
+    case 'voice-peer':voicePeer(m.id);break;
+    case 'voice-signal':handleVoiceSignal(m);break;
+  }
+}
+async function handleVoiceSignal(m){
+  const data=m.data||{},peer=m.from;
+  if(!peer)return;
+  voicePeer(peer);
+  const state=voicePeers.get(peer);if(!state)return;
+  if(data.description){
+    await state.pc.setRemoteDescription(data.description);
+    if(data.description.type==='offer'){
+      const answer=await state.pc.createAnswer();
+      await state.pc.setLocalDescription(answer);
+      voiceSignal(peer,{description:state.pc.localDescription});
+    }
+  }else if(data.candidate){
+    try{await state.pc.addIceCandidate(data.candidate);}catch(error){console.warn('[monster-crash] ICE candidate rejected',error);}
   }
 }
 
@@ -399,14 +475,16 @@ function startGame(m){
   for(const p of m.players){const c=makeCar(p,me&&p.id===me.id);game.cars.set(p.id,c);if(c.me)game.my=c;c.g.visible=!c.out;}
   const c=game.my;if(c)camera.position.set(c.x-Math.sin(c.a)*19,10,c.z-Math.cos(c.a)*19);
   $('touch').classList.toggle('hidden',!isTouch);
+  $('voice').classList.toggle('hidden',!voiceSupported);
+  send({t:'voice-hello'});
   $('banner').classList.add('hidden');
   view='game';screen('game');
 }
 function applyState(s){
   game.phase=s.ph;game.left=s.left;game.round=s.round;
-  for(const [id,x,z,a,mons,out] of s.p){
+  for(const [id,x,z,a,mons,out,total] of s.p){
     const c=game.cars.get(id);if(!c)continue;
-    c.monsters=mons;
+    c.monsters=mons;c.total=total;
     if(out&&!c.out){c.out=true;burst(c.x,1,c.z,c.color,30,18,1.2);}
     c.g.visible=!c.out;
     if(!c.me){c.tx=x;c.tz=z;c.ta=a;}
@@ -429,7 +507,7 @@ function newRound(m){
 function onOut(m){
   const isMe=me&&m.id===me.id;
   $('bannerT').textContent=isMe?'You\'re eliminated!':`${m.name} is eliminated!`;
-  $('bannerS').textContent=`Only ${m.monsters} monsters · Place ${m.place}`+(m.left>1?` · ${m.left} left in the game`:'');
+  $('bannerS').textContent=`Only ${m.monsters} this round · Place ${m.place}`+(m.left>1?` · ${m.left} left in the game`:'');
   $('banner').classList.remove('hidden');
   setTimeout(()=>$('banner').classList.add('hidden'),4000);
 }
@@ -438,8 +516,9 @@ function onEnd(m){
   $('endTitle').textContent=won?'You won!':`${m.winner.name} wins`;
   $('endSub').textContent=won?`+${ton(m.prize)} TON was added to your balance.`:`Prize: ${ton(m.prize)} TON`;
   const medal=['🥇','🥈','🥉'];
-  $('endList').innerHTML=m.results.map(r=>`<div class="row ${me&&r.id===me.id?'me':''}"><span>${medal[r.place-1]||r.place+'.'} ${esc(r.name)}</span></div>`).join('');
+  $('endList').innerHTML=m.results.map(r=>`<div class="row ${me&&r.id===me.id?'me':''}"><span>${medal[r.place-1]||r.place+'.'} ${esc(r.name)}</span><span>${r.total||0} 👾</span></div>`).join('');
   $('banner').classList.add('hidden');$('touch').classList.add('hidden');
+  voiceReset();
   if(won&&tg&&tg.HapticFeedback)tg.HapticFeedback.notificationOccurred('success');
   setTimeout(()=>{clearGame();view='end';screen('scrEnd');},1500);
 }
@@ -502,7 +581,7 @@ function updIntroCam(dt){
 let hudT=0;
 function updHud(dt){
   const c=game.my;
-  $('myMon').textContent='👾 '+(c?c.monsters:0);
+  $('myMon').textContent='👾 '+(c?c.total:0);
   $('myBoost').style.width=(c?c.boost:0)+'%';
   $('spect').classList.toggle('hidden',!(c&&c.out));
   const cnt=$('count');
@@ -514,7 +593,7 @@ function updHud(dt){
   hudT-=dt;if(hudT>0)return;hudT=.25;
   const alive=[...game.cars.values()].filter(o=>!o.out).sort((a,b)=>b.monsters-a.monsters);
   $('roundLbl').textContent=`Round ${game.round} · ${alive.length} left · Pot ${ton(game.pot)} TON`;
-  $('board').innerHTML=alive.map((o,i)=>`<div class="${i===alive.length-1?'low':o.me?'me':''}"><span><span style="color:${hex(o.color)}">■</span> ${esc(o.name)}</span><span>${o.monsters} 👾</span></div>`).join('');
+  $('board').innerHTML=alive.map((o,i)=>`<div class="${i===alive.length-1?'low':o.me?'me':''}"><span><span style="color:${hex(o.color)}">■</span> ${esc(o.name)}</span><span>${o.total} 👾</span></div>`).join('');
 }
 
 // Background camera for the lobby

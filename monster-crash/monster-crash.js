@@ -179,6 +179,22 @@ function attachMonsterCrash(server, opts) {
       if (m.t === 'join') return join(ws);
       if (m.t === 'leave') return leave(ws);
       if (m.t === 'lobby') { if (!ws.matchId) send(ws, lobbyView()); return; }
+      if (m.t === 'voice-hello' || m.t === 'voice-signal') {
+        const mt = ws.matchId && matches.get(ws.matchId);
+        if (!mt) return;
+        const target = m.t === 'voice-signal' && m.data && m.data.to;
+        for (const player of mt.players.values()) {
+          if (player.id === ws.user.id || (target && player.id !== target)) continue;
+          const peer = conns.get(player.id);
+          if (m.t === 'voice-hello') send(peer, { t: 'voice-peer', id: ws.user.id });
+          else {
+            const data = { ...m.data };
+            delete data.to;
+            send(peer, { t: 'voice-signal', from: ws.user.id, data });
+          }
+        }
+        return;
+      }
       const mt = ws.matchId && matches.get(ws.matchId);
       if (mt) mt.onMsg(ws.user.id, m);
     });
@@ -202,7 +218,7 @@ function attachMonsterCrash(server, opts) {
     const pot = cfg.feeNano * list.length;
     const players = new Map();
     list.forEach((p, i) => {
-      players.set(p.id, { id: p.id, name: p.name, color: i, x: 0, z: 0, a: 0, monsters: 0, out: false, place: 0, lastSeen: 0 });
+      players.set(p.id, { id: p.id, name: p.name, color: i, x: 0, z: 0, a: 0, monsters: 0, total: 0, out: false, place: 0, lastSeen: 0 });
     });
 
     const freeSpot = (pad) => {
@@ -262,6 +278,7 @@ function attachMonsterCrash(server, opts) {
             mo.active = false;
             mo.respawnAt = Date.now() + 2000 + Math.random() * 2000;
             p.monsters++;
+            p.total++;
           }
         }
       },
@@ -278,7 +295,7 @@ function attachMonsterCrash(server, opts) {
       const loser = alive[0];
       loser.out = true;
       loser.place = alive.length;
-      broadcast({ t: 'out', id: loser.id, name: loser.name, monsters: loser.monsters, place: loser.place, left: alive.length - 1 });
+      broadcast({ t: 'out', id: loser.id, name: loser.name, monsters: loser.monsters, total: loser.total, place: loser.place, left: alive.length - 1 });
       if (alive.length - 1 <= 1) finish(alive[1]);
       else { phase = 'break'; phaseEnds = Date.now() + cfg.breakSeconds * 1000; }
     }
@@ -309,7 +326,7 @@ function attachMonsterCrash(server, opts) {
       broadcast({
         t: 'end', pot, prize,
         winner: { id: winner.id, name: winner.name },
-        results: [...players.values()].sort((a, b) => a.place - b.place).map(p => ({ id: p.id, name: p.name, place: p.place })),
+        results: [...players.values()].sort((a, b) => a.place - b.place).map(p => ({ id: p.id, name: p.name, place: p.place, total: p.total })),
       });
       matches.delete(id);
       for (const p of players.values()) {
@@ -348,7 +365,7 @@ function attachMonsterCrash(server, opts) {
 
       broadcast({
         t: 's', ph: phase, left: Math.max(0, (phaseEnds - now) / 1000), round,
-        p: [...players.values()].map(p => [p.id, +p.x.toFixed(2), +p.z.toFixed(2), +p.a.toFixed(3), p.monsters, p.out ? 1 : 0]),
+        p: [...players.values()].map(p => [p.id, +p.x.toFixed(2), +p.z.toFixed(2), +p.a.toFixed(3), p.monsters, p.out ? 1 : 0, p.total]),
         m: monsters.map(mo => [+mo.x.toFixed(1), +mo.z.toFixed(1), mo.active ? 1 : 0]),
       });
     }, 100);
