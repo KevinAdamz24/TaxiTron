@@ -83,7 +83,7 @@ button{font:inherit;cursor:pointer}
   <div class="stripe"></div>
   <div class="lobbyHead"><div><p class="lobbyKicker">Live Arena · Island Mode</p><h1 class="disp">MONSTER<br>CRASH</h1></div><p class="sub">Collect the most monsters.<br>The last place is eliminated.</p></div>
   <div class="lobbyGrid">
-    <div class="countdownPanel"><p class="countdownLabel">Round starts in</p><div class="lt disp" id="lTimer">1:00</div><div class="countdownRule"><i></i></div><p class="note" id="lState">Waiting for players</p></div>
+    <div class="countdownPanel"><p class="countdownLabel">Round starts in</p><div class="lt disp" id="lTimer">5:00</div><div class="countdownRule"><i></i></div><p class="note" id="lState">Waiting for players</p></div>
     <div class="lobbySide">
       <div class="lobbyStats"><div class="lobbyStat"><span>Players</span><b id="lCount">0/10</b></div><div class="lobbyStat"><span>Pot</span><b id="lPot">0 TON</b></div><div class="lobbyStat" id="balRow"><span>Your balance</span><b id="lBal">–</b></div><div class="lobbyStat"><span>Winner gets</span><b id="lPrize">0 TON</b></div></div>
       <div class="lobbyPlayersTitle"><span>Participants</span><span class="note">3 needed</span></div>
@@ -337,7 +337,7 @@ function readInput(){
 const WS_URL=(location.protocol==='https:'?'wss://':'ws://')+location.host+'/mc';
 let ws=null,me=null,offset=0,lobby=null,game=null,view='connect';
 const send=m=>{if(ws&&ws.readyState===1)ws.send(JSON.stringify(m));};
-let voiceStream=null,voiceEnabled=false,voicePeers=new Map(),voiceAudioContext=null,voiceAudioUnlocked=false;
+let voiceStream=null,voiceEnabled=false,voicePeers=new Map(),voiceAudioContext=null,voiceAudioUnlocked=false,voiceLobbyStarted=false;
 const voiceSupported=!!(window.RTCPeerConnection&&navigator.mediaDevices&&navigator.mediaDevices.getUserMedia);
 function unlockVoiceAudio(){
   if(voiceAudioUnlocked)return;
@@ -357,6 +357,7 @@ function voiceReset(){
   if(voiceStream){voiceStream.getTracks().forEach(track=>track.stop());voiceStream=null;}
   if(voiceAudioContext){voiceAudioContext.close().catch(()=>{});voiceAudioContext=null;}
   voiceAudioUnlocked=false;
+  voiceLobbyStarted=false;
   voiceEnabled=false;
   const button=$('voice');
   button.classList.add('hidden');button.classList.remove('on');button.textContent='🎙️ Turn mic on';
@@ -365,21 +366,22 @@ function voiceSignal(peer,data){send({t:'voice-signal',data:{to:peer, ...data}})
 function voiceOffer(peer){
   const state=voicePeers.get(peer);
   if(!state)return;
-  if(state.pc.signalingState!=='stable'){state.offerPending=true;return;}
-  state.pc.createOffer().then(offer=>state.pc.setLocalDescription(offer)).then(()=>voiceSignal(peer,{description:state.pc.localDescription})).catch(error=>console.warn('[monster-crash] voice offer failed',error));
+  if(String(me.id)>=String(peer))return;
+  if(state.makingOffer||state.pc.signalingState!=='stable'){state.offerPending=true;return;}
+  state.makingOffer=true;
+  state.pc.createOffer().then(offer=>state.pc.setLocalDescription(offer)).then(()=>voiceSignal(peer,{description:state.pc.localDescription})).catch(error=>console.warn('[monster-crash] voice offer failed',error)).finally(()=>{state.makingOffer=false;});
 }
 function voicePeer(id,force=false){
   if(!me||id===me.id)return;
   if(voicePeers.has(id)){
-    if(!force)return;
-    const old=voicePeers.get(id);
-    old.pc.close();old.audio?.remove();voicePeers.delete(id);
+    return;
   }
-  const pc=new RTCPeerConnection({iceServers:game&&game.iceServers&&game.iceServers.length?game.iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
-  const state={pc,audio:null,sentStream:false,pendingCandidates:[],offerPending:false};
+  const servers=game&&game.iceServers&&game.iceServers.length?game.iceServers:lobby&&lobby.iceServers&&lobby.iceServers.length?lobby.iceServers:[{urls:'stun:stun.l.google.com:19302'}];
+  const pc=new RTCPeerConnection({iceServers:servers});
+  const transceiver=pc.addTransceiver('audio',{direction:'recvonly'});
+  const state={pc,audio:null,transceiver,sentStream:false,pendingCandidates:[],offerPending:false,makingOffer:false,ignoreOffer:false};
   voicePeers.set(id,state);
-  pc.addTransceiver('audio',{direction:'recvonly'});
-  if(voiceStream){voiceStream.getTracks().forEach(track=>pc.addTrack(track,voiceStream));state.sentStream=true;}
+  if(voiceStream){transceiver.sender.replaceTrack(voiceStream.getAudioTracks()[0]);transceiver.direction='sendrecv';state.sentStream=true;}
   pc.onicecandidate=e=>{if(e.candidate)voiceSignal(id,{candidate:e.candidate});};
   pc.ontrack=e=>{
     const audio=document.createElement('audio');
@@ -411,15 +413,39 @@ async function toggleVoice(){
     if(!voiceStream)voiceStream=await navigator.mediaDevices.getUserMedia({audio:true,video:false});
     voiceStream.getAudioTracks().forEach(track=>track.enabled=true);
     voiceEnabled=true;button.classList.add('on');button.textContent='🎙️ Turn mic off';
-    send({t:'voice-hello'});
     for(const [id,state] of voicePeers){
       if(!state.sentStream){
-        state.pc.addTrack(voiceStream.getAudioTracks()[0],voiceStream);
+        state.transceiver.sender.replaceTrack(voiceStream.getAudioTracks()[0]);
+        state.transceiver.direction='sendrecv';
         state.sentStream=true;
       }
       voiceOffer(id);
     }
   }catch(error){console.error('[monster-crash] microphone access failed',error);toast('Microphone access was denied.');}
+}
+async function enableVoiceAutomatically(){
+  if(!voiceSupported||voiceEnabled)return;
+  const button=$('voice');
+  unlockVoiceAudio();
+  try{
+    voiceStream=voiceStream||await navigator.mediaDevices.getUserMedia({audio:true,video:false});
+    voiceStream.getAudioTracks().forEach(track=>track.enabled=true);
+    voiceEnabled=true;
+    button.classList.add('on');
+    button.textContent='🎙️ Turn mic off';
+    for(const [id,state] of voicePeers){
+      if(!state.sentStream){
+        state.transceiver.sender.replaceTrack(voiceStream.getAudioTracks()[0]);
+        state.transceiver.direction='sendrecv';
+        state.sentStream=true;
+      }
+      voiceOffer(id);
+    }
+  }catch(error){
+    console.warn('[monster-crash] automatic microphone access was not granted',error);
+    button.classList.remove('on');
+    button.textContent='🎙️ Turn mic on';
+  }
 }
 let authData=tg&&tg.initData?tg.initData:null;
 function testLogin(){
@@ -441,7 +467,7 @@ function connect(){
 function handle(m){
   switch(m.t){
     case 'me':me=m;$('myName').textContent=m.name;break;
-    case 'lobby':offset=m.now-Date.now();lobby=m;renderLobby();if(view==='connect'){view='lobby';screen('scrLobby');}break;
+    case 'lobby':offset=m.now-Date.now();lobby=m;renderLobby();if(view==='connect'){view='lobby';screen('scrLobby');}startLobbyVoice();break;
     case 'balance':$('balRow').style.display='';$('lBal').textContent=ton(m.nano)+' TON';break;
     case 'error':toast(m.msg);$('btnJoin').disabled=false;break;
     case 'cancelled':toast(m.msg,7000);break;
@@ -450,8 +476,15 @@ function handle(m){
     case 'round':if(game)newRound(m);break;
     case 'out':if(game)onOut(m);break;
     case 'end':if(game)onEnd(m);break;
-    case 'voice-peer':voicePeer(m.id,true);break;
+    case 'voice-peer':voicePeer(m.id);break;
     case 'voice-signal':handleVoiceSignal(m);break;
+  }
+  function startLobbyVoice(){
+    if(voiceLobbyStarted||!voiceSupported)return;
+    voiceLobbyStarted=true;
+    $('voice').classList.remove('hidden');
+    send({t:'voice-hello'});
+    enableVoiceAutomatically();
   }
 }
 async function handleVoiceSignal(m){
@@ -460,6 +493,12 @@ async function handleVoiceSignal(m){
   voicePeer(peer);
   const state=voicePeers.get(peer);if(!state)return;
   if(data.description){
+    const offerCollision=data.description.type==='offer'&&(state.makingOffer||state.pc.signalingState!=='stable');
+    state.ignoreOffer=String(me.id)<String(peer)&&offerCollision;
+    if(state.ignoreOffer)return;
+    if(data.description.type==='offer'&&offerCollision){
+      await state.pc.setLocalDescription({type:'rollback'});
+    }
     await state.pc.setRemoteDescription(data.description);
     for(const candidate of state.pendingCandidates.splice(0)){
       try{await state.pc.addIceCandidate(candidate);}catch(error){console.warn('[monster-crash] queued ICE candidate rejected',error);}
@@ -497,7 +536,7 @@ function renderLobby(){
 }
 setInterval(()=>{
   if(!lobby)return;
-  if(!lobby.endsAt){$('lTimer').textContent='1:00';return;}
+  if(!lobby.endsAt){$('lTimer').textContent='5:00';return;}
   const s=Math.max(0,Math.ceil((lobby.endsAt-(Date.now()+offset))/1000));
   $('lTimer').textContent=`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
 },250);
@@ -515,6 +554,7 @@ function startGame(m){
   $('touch').classList.toggle('hidden',!isTouch);
   $('voice').classList.toggle('hidden',!voiceSupported);
   send({t:'voice-hello'});
+  enableVoiceAutomatically();
   $('banner').classList.add('hidden');
   view='game';screen('game');
 }

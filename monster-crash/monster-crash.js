@@ -3,7 +3,7 @@
 //
 // Ablauf:
 //  - Spieler zahlt 0.001 TON Einsatz -> ist in der Lobby (max. 10)
-//  - Erster Beitritt startet einen 1:00-Timer
+//  - Erster Beitritt startet einen 5:00-Timer
 //  - Timer abgelaufen: >= 3 Spieler -> Spiel startet, sonst Einsatz zurück an alle
 //  - Jede Runde 1:00, wer am wenigsten Monster hat fliegt raus, bis einer übrig ist
 //  - Sieger bekommt 80 % vom Topf, 20 % gehen an die App
@@ -19,7 +19,7 @@ const DEFAULTS = {
   winnerShare: 0.8,          // 80 % an den Sieger, Rest an die App
   minPlayers: 3,
   maxPlayers: 10,
-  lobbySeconds: 60,          // 1:00
+  lobbySeconds: 300,         // 5:00
   roundSeconds: 60,          // 1:00
   countSeconds: 5,
   breakSeconds: 5,
@@ -96,6 +96,7 @@ function attachMonsterCrash(server, opts) {
     winnerShare: cfg.winnerShare,
     min: cfg.minPlayers,
     max: cfg.maxPlayers,
+    iceServers: cfg.iceServers,
   });
   const broadcastLobby = () => {
     const v = lobbyView();
@@ -182,9 +183,10 @@ function attachMonsterCrash(server, opts) {
       if (m.t === 'lobby') { if (!ws.matchId) send(ws, lobbyView()); return; }
       if (m.t === 'voice-hello' || m.t === 'voice-signal') {
         const mt = ws.matchId && matches.get(ws.matchId);
-        if (!mt) return;
         const target = m.t === 'voice-signal' && m.data && m.data.to;
-        for (const player of mt.players.values()) {
+        const players = mt ? mt.players.values() : lobby.players.values();
+        if (!mt && ws.matchId) return;
+        for (const player of players) {
           if (player.id === ws.user.id || (target && player.id !== target)) continue;
           const peer = conns.get(player.id);
           if (m.t === 'voice-hello') {
