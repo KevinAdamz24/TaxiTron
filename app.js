@@ -2499,14 +2499,16 @@
   };
 
   function configureGameTexture(texture){
-    // Pure nearest filtering (no mipmaps) keeps pixel-art sprites blocky-sharp
-    // at ANY distance. Mipmaps would blend/average the texture down into a
-    // smooth blur once the sprite gets small on screen (exactly the "distant
-    // zombies look blurry" complaint) — so we deliberately skip them here.
+    // Keep close-up sprites blocky-sharp (nearest magnification), but use
+    // mipmaps for minification so distant/small sprites don't shimmer or
+    // "sparkle" from texel aliasing (a moving sub-pixel pattern flickers as
+    // the sprite moves/scales without mipmaps). NearestMipmapNearest still
+    // picks a single crisp mip level (no blur blending), it just avoids the
+    // flicker/glitter, and anisotropy keeps it clear at shallow viewing angles.
     texture.magFilter = THREE.NearestFilter;
-    texture.minFilter = THREE.NearestFilter;
-    texture.generateMipmaps = false;
-    texture.anisotropy = 1;
+    texture.minFilter = THREE.NearestMipmapNearest;
+    texture.generateMipmaps = true;
+    texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
     texture.needsUpdate = true;
     return texture;
   }
@@ -2529,12 +2531,12 @@ const GAME_TAXI_YELLOW_URI = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAfEA
         ((typeof SKIN_IMAGES !== 'undefined' && SKIN_IMAGES[key]) ? SKIN_IMAGES[key] : TAXI_SKIN_URI);
       const tex = new THREE.TextureLoader().load(uri);
       tex.encoding = THREE.sRGBEncoding;
-      // Pure nearest filtering, no mipmaps: keeps the player's car sharp at any
-      // distance instead of fading into a smooth blur once it's small on screen.
+      // Nearest magnification keeps the car crisp up close; mipmapped
+      // minification avoids shimmering/glitter when it's small/far away.
       tex.magFilter = THREE.NearestFilter;
-      tex.minFilter = THREE.NearestFilter;
-      tex.generateMipmaps = false;
-      tex.anisotropy = 1;
+      tex.minFilter = THREE.NearestMipmapNearest;
+      tex.generateMipmaps = true;
+      tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
       skinTextureCache[key] = tex;
     }
     return skinTextureCache[key];
