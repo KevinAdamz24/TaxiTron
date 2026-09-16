@@ -20,6 +20,9 @@
  *   GET  /admin/deposits
  *   GET  /admin/purchases
  *
+ * Set ADMIN_CHAT_ID (your personal Telegram user id) to receive a
+ * private Telegram DM from the bot every time a deposit is credited.
+ *
  * Storage: a single JSON file on disk (DATA_DIR/users.json), meant to
  * live on a Railway Volume. Writes are serialised through a tiny
  * in-process queue so concurrent requests can't corrupt the file.
@@ -57,6 +60,7 @@ const MINI_APP_URL = process.env.MINI_APP_URL || 'https://taxitron-production.up
 const TON_USD_RATE = Number(process.env.TON_USD_RATE || 0);
 const SESSION_SECRET = process.env.SESSION_SECRET || 'dev-insecure-secret-change-me';
 const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
+const ADMIN_CHAT_ID = String(process.env.ADMIN_CHAT_ID || '').trim();
 const PLATFORM_USER_ID = String(process.env.PLATFORM_USER_ID || '');
 const DEPOSIT_ADDRESS = process.env.DEPOSIT_ADDRESS || '';
 const TONAPI_URL = process.env.TONAPI_URL || 'https://tonapi.io/v2';
@@ -280,6 +284,35 @@ async function sendTelegramStartMessage(chatId) {
   const body = await response.json();
   if (!response.ok || body.ok !== true) {
     throw new Error('telegram-start-message-failed: ' + (body.description || response.status));
+  }
+}
+
+// Sends a private Telegram DM to the admin (ADMIN_CHAT_ID) whenever a
+// deposit is credited, so payments aren't missed even away from the
+// admin panel. Best-effort: failures are logged, never thrown.
+async function notifyAdminDeposit(user, amountTon) {
+  if (!BOT_TOKEN || !ADMIN_CHAT_ID) return;
+  try {
+    const chatId = /^-?\d+$/.test(ADMIN_CHAT_ID) ? Number(ADMIN_CHAT_ID) : ADMIN_CHAT_ID;
+    const name = telegramHtmlEscape(String(user.name || ('User ' + user.id)));
+    const text = [
+      '💰 Neue Einzahlung!',
+      '',
+      '👤 ' + name + ' (UID ' + user.id + ')',
+      '💎 Betrag: ' + Number(amountTon).toFixed(6) + ' TON',
+      '📊 Neuer Kontostand: ' + Number(user.ton).toFixed(6) + ' TON',
+    ].join('\n');
+    const response = await fetch('https://api.telegram.org/bot' + BOT_TOKEN + '/sendMessage', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text }),
+    });
+    const body = await response.json().catch(() => null);
+    if (!response.ok || !body || body.ok !== true) {
+      console.error('[telegram] admin deposit notify failed', { httpStatus: response.status, body });
+    }
+  } catch (error) {
+    console.error('[telegram] admin deposit notify failed', error.message);
   }
 }
 
@@ -1085,6 +1118,7 @@ async function scanDeposits() {
         if (user.deposits.length > 200) user.deposits = user.deposits.slice(-200);
         changed = true;
         console.log('[deposit] credited ' + amountTon + ' TON to user ' + user.id);
+        notifyAdminDeposit(user, amountTon);
       }
     }
     if (changed) persist();
@@ -1127,6 +1161,7 @@ app.post('/api/deposit/claim', requireUserFromBody, async (req, res) => {
     user.deposits.push({ ts: Date.now(), amount, txId: txHash });
     if (user.deposits.length > 200) user.deposits = user.deposits.slice(-200);
     persist();
+    notifyAdminDeposit(user, amount);
     res.json({ state: publicState(user), amount });
   } catch (e) {
     res.status(502).json({ error: 'deposit-verification-failed' });
