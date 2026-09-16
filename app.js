@@ -2043,7 +2043,7 @@
   const safeDevice = isTelegramWebView || isMobileDevice;
   const qualityProfiles = safeDevice
     ? [{ pixelRatio:1, renderFps:24 }, { pixelRatio:1.5, renderFps:30 }, { pixelRatio:Math.min(window.devicePixelRatio, 2), renderFps:40 }]
-    : [{ pixelRatio:1.25, renderFps:45 }, { pixelRatio:1.5, renderFps:60 }, { pixelRatio:Math.min(window.devicePixelRatio, 2), renderFps:60 }];
+    : [{ pixelRatio:1, renderFps:30 }, { pixelRatio:1.25, renderFps:45 }, { pixelRatio:1.5, renderFps:60 }, { pixelRatio:Math.min(window.devicePixelRatio, 2), renderFps:60 }];
   let qualityIndex = qualityProfiles.length - 1;
   let qualityStableTime = 0;
   let qualitySampleTime = 0;
@@ -2062,6 +2062,9 @@
 
   function resize(){
     const w = window.innerWidth, h = window.innerHeight;
+    // Re-apply the pixel ratio too, in case devicePixelRatio changed (e.g. moving
+    // the window to a different-DPI screen), not just the CSS size.
+    applyQualityProfile();
     renderer.setSize(w, h);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
@@ -2496,10 +2499,13 @@
   };
 
   function configureGameTexture(texture){
-    texture.magFilter = THREE.LinearFilter;
-    texture.minFilter = THREE.LinearMipmapLinearFilter;
+    // Nearest filtering keeps pixel-art sprites crisp up close; mipmaps stay on
+    // (nearest-mipmap-linear) plus max anisotropy so distant zombies/cars/obstacles
+    // don't shimmer or turn into a blurry smear when seen at an angle/far away.
+    texture.magFilter = THREE.NearestFilter;
+    texture.minFilter = THREE.NearestMipmapLinearFilter;
     texture.generateMipmaps = true;
-    texture.anisotropy = Math.min(renderer.capabilities.getMaxAnisotropy(), 8);
+    texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
     texture.needsUpdate = true;
     return texture;
   }
@@ -2522,10 +2528,12 @@ const GAME_TAXI_YELLOW_URI = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAfEA
         ((typeof SKIN_IMAGES !== 'undefined' && SKIN_IMAGES[key]) ? SKIN_IMAGES[key] : TAXI_SKIN_URI);
       const tex = new THREE.TextureLoader().load(uri);
       tex.encoding = THREE.sRGBEncoding;
-      tex.magFilter = THREE.LinearFilter;
-      tex.minFilter = THREE.LinearFilter;
-      tex.generateMipmaps = false;
-      tex.anisotropy = 8;
+      // Nearest filtering keeps the car skin sharp; mipmaps + max anisotropy
+      // avoid blur/shimmer when the car is seen from a distance or at an angle.
+      tex.magFilter = THREE.NearestFilter;
+      tex.minFilter = THREE.NearestMipmapLinearFilter;
+      tex.generateMipmaps = true;
+      tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
       skinTextureCache[key] = tex;
     }
     return skinTextureCache[key];
