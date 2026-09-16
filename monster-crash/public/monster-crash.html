@@ -356,7 +356,7 @@ function voiceOffer(peer){
 function voicePeer(id){
   if(!me||id===me.id||voicePeers.has(id))return;
   const pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
-  const state={pc,audio:null,sentStream:false};
+  const state={pc,audio:null,sentStream:false,pendingCandidates:[]};
   voicePeers.set(id,state);
   pc.addTransceiver('audio',{direction:'recvonly'});
   if(voiceStream){voiceStream.getTracks().forEach(track=>pc.addTrack(track,voiceStream));state.sentStream=true;}
@@ -434,13 +434,20 @@ async function handleVoiceSignal(m){
   const state=voicePeers.get(peer);if(!state)return;
   if(data.description){
     await state.pc.setRemoteDescription(data.description);
+    for(const candidate of state.pendingCandidates.splice(0)){
+      try{await state.pc.addIceCandidate(candidate);}catch(error){console.warn('[monster-crash] queued ICE candidate rejected',error);}
+    }
     if(data.description.type==='offer'){
       const answer=await state.pc.createAnswer();
       await state.pc.setLocalDescription(answer);
       voiceSignal(peer,{description:state.pc.localDescription});
     }
   }else if(data.candidate){
-    try{await state.pc.addIceCandidate(data.candidate);}catch(error){console.warn('[monster-crash] ICE candidate rejected',error);}
+    if(state.pc.remoteDescription){
+      try{await state.pc.addIceCandidate(data.candidate);}catch(error){console.warn('[monster-crash] ICE candidate rejected',error);}
+    }else{
+      state.pendingCandidates.push(data.candidate);
+    }
   }
 }
 
