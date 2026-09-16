@@ -391,6 +391,11 @@ function ensureDailyReset(user) {
     user.tonToday = 0;
     user.tonTodayByLevel = { 1: 0, 2: 0, 3: 0, 4: 0 };
   }
+  if (user.adVideoDay !== today) {
+    user.adVideoDay = today;
+    user.adVideosWatched = 0;
+    user.adRewardClaimed = false;
+  }
 }
 function ensureTournamentReset(user) {
   const week = berlinWeekKey();
@@ -1037,6 +1042,7 @@ app.post('/api/tasks/withdraw-channel-claim', requireUserFromBody, async (req, r
 
 app.post('/api/tasks/ad-video-claim', requireUserFromBody, (req, res) => {
   const user = req.user;
+  ensureDailyReset(user);
   const watched = Math.max(0, Math.min(10, Number(user.adVideosWatched) || 0));
   if (user.adRewardClaimed || watched >= 10) {
     user.adVideosWatched = 10;
@@ -1062,6 +1068,7 @@ app.get('/api/adsgram-reward', (req, res) => {
 
   // Always acknowledge the callback so AdsGram does not keep retrying it.
   if (!user) return res.status(200).json({ ok: false, rewarded: false });
+  ensureDailyReset(user);
 
   if (user.adRewardClaimed === true) {
     return res.status(200).json({ ok: true, rewarded: false, completed: true, watched: 0 });
