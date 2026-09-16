@@ -25,6 +25,7 @@ const DEFAULTS = {
   breakSeconds: 5,
   monsterCount: 50,
   arena: 60,
+  iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
 };
 
 const OBSTACLES = [
@@ -258,7 +259,7 @@ function attachMonsterCrash(server, opts) {
       id,
       players,
       startMsg: () => ({
-        t: 'start', matchId: id, round, pot, winnerShare: cfg.winnerShare, arena: A,
+        t: 'start', matchId: id, round, pot, winnerShare: cfg.winnerShare, arena: A, iceServers: cfg.iceServers,
         players: [...players.values()].map(p => ({ id: p.id, name: p.name, color: p.color, x: p.x, z: p.z, a: p.a, out: p.out })),
       }),
       onMsg(uid, m) {
