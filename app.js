@@ -2548,7 +2548,7 @@ const GAME_TAXI_YELLOW_URI = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAfEA
     yellow: { w: 1.8 * (497/512), h: 1.8, sink: 0.03 },
     red: { w: 2.2 * (452/489), h: 2.2, sink: 0.03 },
     white: { w: 2.2 * (365/410), h: 2.2, sink: 0.03 },
-    green: { w: 2.2 * (356/507), h: 2.2, sink: 0.03 }
+    green: { w: 2.7 * (356/507), h: 2.7, sink: 0.03 }
   };
   const DEFAULT_PLAYER_SIZE = { w: 1.7 * (390/380), h: 1.7, sink: 0.12 };
   function applyPlayerSize(key){
