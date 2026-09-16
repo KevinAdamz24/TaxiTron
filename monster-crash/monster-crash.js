@@ -3,7 +3,7 @@
 //
 // Ablauf:
 //  - Spieler zahlt 0.001 TON Einsatz -> ist in der Lobby (max. 10)
-//  - Erster Beitritt startet einen 5:00-Timer
+//  - Erster Beitritt startet einen 1:00-Timer
 //  - Timer abgelaufen: >= 3 Spieler -> Spiel startet, sonst Einsatz zurück an alle
 //  - Jede Runde 1:00, wer am wenigsten Monster hat fliegt raus, bis einer übrig ist
 //  - Sieger bekommt 80 % vom Topf, 20 % gehen an die App
@@ -19,7 +19,7 @@ const DEFAULTS = {
   winnerShare: 0.8,          // 80 % an den Sieger, Rest an die App
   minPlayers: 3,
   maxPlayers: 10,
-  lobbySeconds: 300,         // 5:00
+  lobbySeconds: 60,          // 1:00
   roundSeconds: 60,          // 1:00
   countSeconds: 5,
   breakSeconds: 5,
