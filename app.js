@@ -2522,7 +2522,7 @@ const GAME_TAXI_YELLOW_URI = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAfEA
   const GAME_TAXI_RED_URI = 'sprites/taxi2.png';
   const GAME_TAXI_LEVEL_THREE_URI = 'sprites/taxi3.png';
   const GAME_TAXI_LEVEL_FOUR_URI = 'sprites/taxi4.png';
-  const GAME_TAXI_LEVEL_ONE_URI = 'sprites/taxilevel1.png';
+  const GAME_TAXI_LEVEL_ONE_URI = 'sprites/taxi1.png';
   const GAME_SKIN_OVERRIDES = { yellow: GAME_TAXI_LEVEL_ONE_URI, red: GAME_TAXI_RED_URI, white: GAME_TAXI_LEVEL_THREE_URI, green: GAME_TAXI_LEVEL_FOUR_URI };
   const skinTextureCache = {};
   function getSkinTexture(key){
@@ -2545,7 +2545,7 @@ const GAME_TAXI_YELLOW_URI = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAfEA
   let playerSprite = null;
   // per-skin on-screen size (images are cropped tight, so the bottom edge = the tires)
   const PLAYER_SKIN_SIZE = {
-    yellow: { w: 1.8 * (497/512), h: 1.8, sink: 0.03 },
+    yellow: { w: 2.2 * (411/352), h: 2.2, sink: 0.03 },
     red: { w: 2.2 * (452/489), h: 2.2, sink: 0.03 },
     white: { w: 2.2 * (365/410), h: 2.2, sink: 0.03 },
     green: { w: 2.7 * (356/507), h: 2.7, sink: 0.03 }
