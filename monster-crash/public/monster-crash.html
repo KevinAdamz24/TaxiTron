@@ -365,21 +365,21 @@ function voiceSignal(peer,data){send({t:'voice-signal',data:{to:peer, ...data}})
 function voiceOffer(peer){
   const state=voicePeers.get(peer);
   if(!state)return;
-  if(state.pc.signalingState!=='stable'){state.offerPending=true;return;}
-  state.pc.createOffer().then(offer=>state.pc.setLocalDescription(offer)).then(()=>voiceSignal(peer,{description:state.pc.localDescription})).catch(error=>console.warn('[monster-crash] voice offer failed',error));
+  if(String(me.id)>=String(peer))return;
+  if(state.makingOffer||state.pc.signalingState!=='stable'){state.offerPending=true;return;}
+  state.makingOffer=true;
+  state.pc.createOffer().then(offer=>state.pc.setLocalDescription(offer)).then(()=>voiceSignal(peer,{description:state.pc.localDescription})).catch(error=>console.warn('[monster-crash] voice offer failed',error)).finally(()=>{state.makingOffer=false;});
 }
 function voicePeer(id,force=false){
   if(!me||id===me.id)return;
   if(voicePeers.has(id)){
-    if(!force)return;
-    const old=voicePeers.get(id);
-    old.pc.close();old.audio?.remove();voicePeers.delete(id);
+    return;
   }
   const pc=new RTCPeerConnection({iceServers:game&&game.iceServers&&game.iceServers.length?game.iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
-  const state={pc,audio:null,sentStream:false,pendingCandidates:[],offerPending:false};
+  const transceiver=pc.addTransceiver('audio',{direction:'recvonly'});
+  const state={pc,audio:null,transceiver,sentStream:false,pendingCandidates:[],offerPending:false,makingOffer:false,ignoreOffer:false};
   voicePeers.set(id,state);
-  pc.addTransceiver('audio',{direction:'recvonly'});
-  if(voiceStream){voiceStream.getTracks().forEach(track=>pc.addTrack(track,voiceStream));state.sentStream=true;}
+  if(voiceStream){transceiver.sender.replaceTrack(voiceStream.getAudioTracks()[0]);transceiver.direction='sendrecv';state.sentStream=true;}
   pc.onicecandidate=e=>{if(e.candidate)voiceSignal(id,{candidate:e.candidate});};
   pc.ontrack=e=>{
     const audio=document.createElement('audio');
@@ -411,10 +411,10 @@ async function toggleVoice(){
     if(!voiceStream)voiceStream=await navigator.mediaDevices.getUserMedia({audio:true,video:false});
     voiceStream.getAudioTracks().forEach(track=>track.enabled=true);
     voiceEnabled=true;button.classList.add('on');button.textContent='🎙️ Turn mic off';
-    send({t:'voice-hello'});
     for(const [id,state] of voicePeers){
       if(!state.sentStream){
-        state.pc.addTrack(voiceStream.getAudioTracks()[0],voiceStream);
+        state.transceiver.sender.replaceTrack(voiceStream.getAudioTracks()[0]);
+        state.transceiver.direction='sendrecv';
         state.sentStream=true;
       }
       voiceOffer(id);
@@ -450,7 +450,7 @@ function handle(m){
     case 'round':if(game)newRound(m);break;
     case 'out':if(game)onOut(m);break;
     case 'end':if(game)onEnd(m);break;
-    case 'voice-peer':voicePeer(m.id,true);break;
+    case 'voice-peer':voicePeer(m.id);break;
     case 'voice-signal':handleVoiceSignal(m);break;
   }
 }
@@ -460,6 +460,12 @@ async function handleVoiceSignal(m){
   voicePeer(peer);
   const state=voicePeers.get(peer);if(!state)return;
   if(data.description){
+    const offerCollision=data.description.type==='offer'&&(state.makingOffer||state.pc.signalingState!=='stable');
+    state.ignoreOffer=String(me.id)<String(peer)&&offerCollision;
+    if(state.ignoreOffer)return;
+    if(data.description.type==='offer'&&offerCollision){
+      await state.pc.setLocalDescription({type:'rollback'});
+    }
     await state.pc.setRemoteDescription(data.description);
     for(const candidate of state.pendingCandidates.splice(0)){
       try{await state.pc.addIceCandidate(candidate);}catch(error){console.warn('[monster-crash] queued ICE candidate rejected',error);}
