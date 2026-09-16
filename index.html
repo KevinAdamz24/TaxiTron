@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://sad.adsgram.ai/js/sad.min.js"></script>
 <title>Coin Runner 3D</title>
 <link rel="stylesheet" href="styles.css">
 </head>
@@ -208,6 +209,16 @@
         <div class="invite-milestone" id="inviteMilestone20"><span>20 friends → 0.3 TON</span><button class="menu-btn invite-claim-btn" data-invite-threshold="20" type="button" data-i18n="claim">Claim</button></div>
         <div class="invite-milestone" id="inviteMilestone50"><span>50 friends → 1 TON</span><button class="menu-btn invite-claim-btn" data-invite-threshold="50" type="button" data-i18n="claim">Claim</button></div>
         <div class="task-status" id="inviteTaskStatus"></div>
+      </div>
+    </div>
+    <div class="task-card" id="adsTaskCard">
+      <div class="task-card-icon">▶</div>
+      <div class="task-card-content">
+        <h2 data-i18n="watchVideos">Watch 10 videos</h2>
+        <p data-i18n="watchVideosDesc">Complete 10 rewarded videos and receive 0.03 TON in total.</p>
+        <div class="task-reward" id="adsTaskProgress">0 / 10 videos · Reward: 0.03 TON</div>
+        <button class="menu-btn" id="watchAdBtn" type="button" data-i18n="watchVideo">Watch video</button>
+        <div class="task-status" id="adsTaskStatus"></div>
       </div>
     </div>
   </main>
