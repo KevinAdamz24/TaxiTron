@@ -2499,13 +2499,14 @@
   };
 
   function configureGameTexture(texture){
-    // Nearest filtering keeps pixel-art sprites crisp up close; mipmaps stay on
-    // (nearest-mipmap-linear) plus max anisotropy so distant zombies/cars/obstacles
-    // don't shimmer or turn into a blurry smear when seen at an angle/far away.
+    // Pure nearest filtering (no mipmaps) keeps pixel-art sprites blocky-sharp
+    // at ANY distance. Mipmaps would blend/average the texture down into a
+    // smooth blur once the sprite gets small on screen (exactly the "distant
+    // zombies look blurry" complaint) — so we deliberately skip them here.
     texture.magFilter = THREE.NearestFilter;
-    texture.minFilter = THREE.NearestMipmapLinearFilter;
-    texture.generateMipmaps = true;
-    texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    texture.minFilter = THREE.NearestFilter;
+    texture.generateMipmaps = false;
+    texture.anisotropy = 1;
     texture.needsUpdate = true;
     return texture;
   }
@@ -2528,12 +2529,12 @@ const GAME_TAXI_YELLOW_URI = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAfEA
         ((typeof SKIN_IMAGES !== 'undefined' && SKIN_IMAGES[key]) ? SKIN_IMAGES[key] : TAXI_SKIN_URI);
       const tex = new THREE.TextureLoader().load(uri);
       tex.encoding = THREE.sRGBEncoding;
-      // Nearest filtering keeps the car skin sharp; mipmaps + max anisotropy
-      // avoid blur/shimmer when the car is seen from a distance or at an angle.
+      // Pure nearest filtering, no mipmaps: keeps the player's car sharp at any
+      // distance instead of fading into a smooth blur once it's small on screen.
       tex.magFilter = THREE.NearestFilter;
-      tex.minFilter = THREE.NearestMipmapLinearFilter;
-      tex.generateMipmaps = true;
-      tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+      tex.minFilter = THREE.NearestFilter;
+      tex.generateMipmaps = false;
+      tex.anisotropy = 1;
       skinTextureCache[key] = tex;
     }
     return skinTextureCache[key];
