@@ -2067,7 +2067,7 @@
   }
   navButtons.forEach(b => b.addEventListener('click', () => {
     if (b.dataset.screen === 'game' && b.classList.contains('play-btn')){ enterGame(); }
-    else if (b.dataset.screen === 'game-menu'){ showScreen('game-menu'); }
+    else if (b.dataset.screen === 'game-menu'){ window.location.href = '/monster-crash/'; }
     else { showScreen(b.dataset.screen); }
   }));
   document.getElementById('toHomeBtn').addEventListener('click', () => showScreen('home'));
