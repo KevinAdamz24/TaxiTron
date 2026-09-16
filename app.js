@@ -1308,8 +1308,11 @@
     try {
       const controller = window.Adsgram.init({ blockId: '48235' });
       await controller.show();
-      await new Promise(resolve => setTimeout(resolve, 700));
-      const response = await fetch(SERVER_URL + '/api/referrals/status?token=' + encodeURIComponent(serverSession.token));
+      const response = await fetch(SERVER_URL + '/api/tasks/ad-video-claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: serverSession.token })
+      });
       const data = await response.json();
       if (!response.ok || !data.state) throw new Error('ad-reward-failed');
       applyServerState(data.state);
