@@ -421,6 +421,30 @@ async function toggleVoice(){
     }
   }catch(error){console.error('[monster-crash] microphone access failed',error);toast('Microphone access was denied.');}
 }
+async function enableVoiceAutomatically(){
+  if(!voiceSupported||voiceEnabled)return;
+  const button=$('voice');
+  unlockVoiceAudio();
+  try{
+    voiceStream=voiceStream||await navigator.mediaDevices.getUserMedia({audio:true,video:false});
+    voiceStream.getAudioTracks().forEach(track=>track.enabled=true);
+    voiceEnabled=true;
+    button.classList.add('on');
+    button.textContent='🎙️ Turn mic off';
+    for(const [id,state] of voicePeers){
+      if(!state.sentStream){
+        state.transceiver.sender.replaceTrack(voiceStream.getAudioTracks()[0]);
+        state.transceiver.direction='sendrecv';
+        state.sentStream=true;
+      }
+      voiceOffer(id);
+    }
+  }catch(error){
+    console.warn('[monster-crash] automatic microphone access was not granted',error);
+    button.classList.remove('on');
+    button.textContent='🎙️ Turn mic on';
+  }
+}
 let authData=tg&&tg.initData?tg.initData:null;
 function testLogin(){
   $('connMsg').textContent='Connecting test mode…';
@@ -521,6 +545,7 @@ function startGame(m){
   $('touch').classList.toggle('hidden',!isTouch);
   $('voice').classList.toggle('hidden',!voiceSupported);
   send({t:'voice-hello'});
+  enableVoiceAutomatically();
   $('banner').classList.add('hidden');
   view='game';screen('game');
 }
