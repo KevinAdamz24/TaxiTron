@@ -2042,8 +2042,8 @@
   const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, powerPreference:'high-performance' });
   const safeDevice = isTelegramWebView || isMobileDevice;
   const qualityProfiles = safeDevice
-    ? [{ pixelRatio:1, renderFps:24 }, { pixelRatio:1.5, renderFps:30 }, { pixelRatio:Math.min(window.devicePixelRatio, 2), renderFps:40 }]
-    : [{ pixelRatio:1, renderFps:30 }, { pixelRatio:1.25, renderFps:45 }, { pixelRatio:1.5, renderFps:60 }, { pixelRatio:Math.min(window.devicePixelRatio, 2), renderFps:60 }];
+    ? [{ pixelRatio:1.25, renderFps:24 }, { pixelRatio:1.75, renderFps:30 }, { pixelRatio:Math.min(window.devicePixelRatio, 2.5), renderFps:40 }]
+    : [{ pixelRatio:1.25, renderFps:30 }, { pixelRatio:1.5, renderFps:45 }, { pixelRatio:1.75, renderFps:60 }, { pixelRatio:Math.min(window.devicePixelRatio, 2.5), renderFps:60 }];
   let qualityIndex = qualityProfiles.length - 1;
   let qualityStableTime = 0;
   let qualitySampleTime = 0;
