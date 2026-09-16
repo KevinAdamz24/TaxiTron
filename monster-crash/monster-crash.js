@@ -186,8 +186,10 @@ function attachMonsterCrash(server, opts) {
         for (const player of mt.players.values()) {
           if (player.id === ws.user.id || (target && player.id !== target)) continue;
           const peer = conns.get(player.id);
-          if (m.t === 'voice-hello') send(peer, { t: 'voice-peer', id: ws.user.id });
-          else {
+          if (m.t === 'voice-hello') {
+            send(ws, { t: 'voice-peer', id: player.id });
+            send(peer, { t: 'voice-peer', id: ws.user.id });
+          } else {
             const data = { ...m.data };
             delete data.to;
             send(peer, { t: 'voice-signal', from: ws.user.id, data });
