@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
@@ -71,24 +71,24 @@ button{font:inherit;cursor:pointer}
 <body>
 <div id="toast" class="hidden"></div>
 
-<div id="scrConnect" class="overlay"><div class="card"><div class="stripe"></div><h1 class="disp">MONSTER<br>CRASH</h1><p class="sub" id="connMsg">Verbinde…</p>
+<div id="scrConnect" class="overlay"><div class="card"><div class="stripe"></div><h1 class="disp">MONSTER<br>CRASH</h1><p class="sub" id="connMsg">Connecting…</p>
   <div id="testLogin" class="hidden">
-    <p class="note">🧪 Testmodus – automatische Test-ID, mit Spielgeld</p>
+    <p class="note">🧪 Test mode – automatic test ID, with play money</p>
   </div></div></div>
 
 <div id="scrLobby" class="overlay hidden"><div class="card lobbyCard">
   <div class="stripe"></div>
-  <div class="lobbyHead"><div><p class="lobbyKicker">Live Arena · Insel-Modus</p><h1 class="disp">MONSTER<br>CRASH</h1></div><p class="sub">Sammle die meisten Monster.<br>Der Letzte fliegt raus.</p></div>
+  <div class="lobbyHead"><div><p class="lobbyKicker">Live Arena · Island Mode</p><h1 class="disp">MONSTER<br>CRASH</h1></div><p class="sub">Collect the most monsters.<br>The last place is eliminated.</p></div>
   <div class="lobbyGrid">
-    <div class="countdownPanel"><p class="countdownLabel">Runde startet in</p><div class="lt disp" id="lTimer">5:00</div><div class="countdownRule"><i></i></div><p class="note" id="lState">Warte auf Spieler</p></div>
+    <div class="countdownPanel"><p class="countdownLabel">Round starts in</p><div class="lt disp" id="lTimer">5:00</div><div class="countdownRule"><i></i></div><p class="note" id="lState">Waiting for players</p></div>
     <div class="lobbySide">
-      <div class="lobbyStats"><div class="lobbyStat"><span>Spieler</span><b id="lCount">0/10</b></div><div class="lobbyStat"><span>Topf</span><b id="lPot">0 TON</b></div><div class="lobbyStat" id="balRow"><span>Dein Guthaben</span><b id="lBal">–</b></div><div class="lobbyStat"><span>Sieger erhält</span><b id="lPrize">0 TON</b></div></div>
-      <div class="lobbyPlayersTitle"><span>Teilnehmer</span><span class="note">3 nötig</span></div>
+      <div class="lobbyStats"><div class="lobbyStat"><span>Players</span><b id="lCount">0/10</b></div><div class="lobbyStat"><span>Pot</span><b id="lPot">0 TON</b></div><div class="lobbyStat" id="balRow"><span>Your balance</span><b id="lBal">–</b></div><div class="lobbyStat"><span>Winner gets</span><b id="lPrize">0 TON</b></div></div>
+      <div class="lobbyPlayersTitle"><span>Participants</span><span class="note">3 needed</span></div>
       <div class="plist lobbyPlayers" id="lPlayers"></div>
     </div>
   </div>
-  <button class="big" id="btnJoin">Beitreten – 0.001 TON</button>
-  <p class="note">Einsatz 0.001 TON · Bei weniger als 3 Spielern wird automatisch zurückerstattet.</p>
+  <button class="big" id="btnJoin">Join – 0.001 TON</button>
+  <p class="note">Stake 0.001 TON · If fewer than 3 players join, it is automatically refunded.</p>
 </div></div>
 
 <div id="scrEnd" class="overlay hidden"><div class="card">
@@ -96,20 +96,20 @@ button{font:inherit;cursor:pointer}
   <h1 class="disp" id="endTitle" style="font-size:34px"></h1>
   <p class="sub" id="endSub"></p>
   <div id="endList"></div>
-  <button class="big" id="btnBack">Zur Lobby</button>
+  <button class="big" id="btnBack">Back to lobby</button>
 </div></div>
 
 <div id="banner" class="overlay hidden" style="background:none;pointer-events:none"><div class="card" style="border-color:var(--hot)"><div class="stripe"></div><h1 class="disp" id="bannerT" style="font-size:30px"></h1><p class="sub" id="bannerS" style="margin-bottom:0"></p></div></div>
 
 <div id="gameUi" class="hidden">
-  <div id="top"><div id="roundLbl" class="disp" style="font-size:14px;text-shadow:2px 2px 0 #15161a">Runde 1</div><div id="timer" class="disp">1:00</div></div>
+  <div id="top"><div id="roundLbl" class="disp" style="font-size:14px;text-shadow:2px 2px 0 #15161a">Round 1</div><div id="timer" class="disp">1:00</div></div>
   <div id="board"></div>
-  <div id="mybox"><b id="myName">Du</b> · <b id="myMon">👾 0</b><div class="bar"><i id="myBoost" style="width:100%"></i></div></div>
+  <div id="mybox"><b id="myName">You</b> · <b id="myMon">👾 0</b><div class="bar"><i id="myBoost" style="width:100%"></i></div></div>
   <div id="count" class="disp hidden">3</div>
-  <div id="spect" class="disp hidden">Raus! Du schaust zu</div>
+  <div id="spect" class="disp hidden">Eliminated! You're watching</div>
   <div id="touch" class="hidden">
     <div id="joy"><div id="joyBase"><div id="knob"></div></div></div>
-    <div id="tbtns"><button id="tBrake" aria-label="Bremsen">⬇</button><button id="tBoost" aria-label="Boost">⚡</button></div>
+    <div id="tbtns"><button id="tBrake" aria-label="Brake">⬇</button><button id="tBoost" aria-label="Boost">⚡</button></div>
   </div>
 </div>
 
@@ -127,7 +127,7 @@ const tg=window.Telegram&&Telegram.WebApp;if(tg){tg.ready();tg.expand();}
 function toast(msg,ms=3500){const t=$('toast');t.textContent=msg;t.classList.remove('hidden');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.add('hidden'),ms);}
 function screen(name){for(const s of ['scrConnect','scrLobby','scrEnd'])$(s).classList.toggle('hidden',s!==name);$('gameUi').classList.toggle('hidden',name!=='game');}
 
-// ---------- Szene ----------
+// ---------- Scene ----------
 const renderer=new THREE.WebGLRenderer({antialias:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);
 renderer.shadowMap.enabled=true;
@@ -266,7 +266,7 @@ function bench(x,z,rotation=0){
 }
 bench(-12,-25);bench(12,-25);bench(-12,25,Math.PI);bench(12,25,Math.PI);
 
-// Partikel & Sound
+// Particles & sound
 const parts=[];const pGeo=new THREE.BoxGeometry(.4,.4,.4);
 function burst(x,y,z,color,n,speed,life=1){for(let i=0;i<n&&parts.length<300;i++){const m=new THREE.Mesh(pGeo,new THREE.MeshBasicMaterial({color}));m.position.set(x,y,z);scene.add(m);parts.push({m,vx:(Math.random()-.5)*speed,vy:Math.random()*speed*.8,vz:(Math.random()-.5)*speed,life:life*(.5+Math.random()*.6)});}}
 function updParts(dt){for(let i=parts.length-1;i>=0;i--){const p=parts[i];p.vy-=22*dt;p.m.position.x+=p.vx*dt;p.m.position.y=Math.max(.2,p.m.position.y+p.vy*dt);p.m.position.z+=p.vz*dt;p.life-=dt;p.m.scale.setScalar(Math.max(.01,p.life));if(p.life<=0){scene.remove(p.m);p.m.material.dispose();parts.splice(i,1);}}}
@@ -290,7 +290,7 @@ function monsterAt(i){
   return monsters[i];
 }
 
-// Autos
+// Cars
 const glass=new THREE.MeshStandardMaterial({color:0x1b2233,metalness:.6,roughness:.2});
 const metal=new THREE.MeshStandardMaterial({color:0x9aa0aa,metalness:.8,roughness:.3});
 const tire=new THREE.MeshStandardMaterial({color:0x111111});
@@ -309,7 +309,7 @@ function makeCar(p,isMe){
   return {id:p.id,name:p.name,color,g,wheels,x:p.x,z:p.z,a:p.a,tx:p.x,tz:p.z,ta:p.a,vx:0,vz:0,boost:100,boosting:false,monsters:0,out:!!p.out,me:isMe,roll:0};
 }
 
-// ---------- Eingabe ----------
+// ---------- Input ----------
 const keys={};
 addEventListener('keydown',e=>{keys[e.code]=true;if(e.code.startsWith('Arrow')||e.code==='Space')e.preventDefault();});
 addEventListener('keyup',e=>{keys[e.code]=false;});
@@ -329,13 +329,13 @@ function readInput(){
   return {t:kt,s:ks,b:!!(k.Space||tBoost)};
 }
 
-// ---------- Netzwerk ----------
+// ---------- Network ----------
 const WS_URL=(location.protocol==='https:'?'wss://':'ws://')+location.host+'/mc';
 let ws=null,me=null,offset=0,lobby=null,game=null,view='connect';
 const send=m=>{if(ws&&ws.readyState===1)ws.send(JSON.stringify(m));};
 let authData=tg&&tg.initData?tg.initData:null;
 function testLogin(){
-  $('connMsg').textContent='Testmodus wird verbunden…';
+  $('connMsg').textContent='Connecting test mode…';
   $('testLogin').classList.remove('hidden');
   let id=sessionStorage.getItem('mcId');
   if(!id){id='t'+Math.random().toString(36).slice(2,9);sessionStorage.setItem('mcId',id);}
@@ -348,7 +348,7 @@ function connect(){
   ws=new WebSocket(WS_URL);
   ws.onopen=()=>send({t:'auth',initData:authData});
   ws.onmessage=e=>{let m;try{m=JSON.parse(e.data);}catch{return;}handle(m);};
-  ws.onclose=()=>{if(view==='connect'||view==='lobby'){screen('connect');view='connect';}$('connMsg').textContent='Verbindung unterbrochen – verbinde neu…';setTimeout(connect,2000);};
+  ws.onclose=()=>{if(view==='connect'||view==='lobby'){screen('connect');view='connect';}$('connMsg').textContent='Connection lost – reconnecting…';setTimeout(connect,2000);};
 }
 function handle(m){
   switch(m.t){
@@ -373,14 +373,14 @@ function renderLobby(){
   $('lCount').textContent=`${n}/${lobby.max}`;
   $('lPot').textContent=`${ton(lobby.pot)} TON`;
   $('lPrize').textContent=`${ton(Math.floor(lobby.pot*lobby.winnerShare))} TON`;
-  $('lPlayers').innerHTML=n?lobby.players.map(p=>`<div class="${me&&p.id===me.id?'me':''}">🚗 ${esc(p.name)}</div>`).join(''):'<div class="note">Noch niemand da – sei der Erste!</div>';
+  $('lPlayers').innerHTML=n?lobby.players.map(p=>`<div class="${me&&p.id===me.id?'me':''}">🚗 ${esc(p.name)}</div>`).join(''):'<div class="note">No one here yet – be the first!</div>';
   const joined=inLobby();
   const btn=$('btnJoin');btn.disabled=!joined&&n>=lobby.max;
-  btn.textContent=joined?'Verlassen (Einsatz zurück)':n>=lobby.max?'Lobby voll':`Beitreten – ${ton(lobby.fee)} TON`;
+  btn.textContent=joined?'Leave (stake refunded)':n>=lobby.max?'Lobby full':`Join – ${ton(lobby.fee)} TON`;
   btn.classList.toggle('alt',joined);
   const st=$('lState');
-  if(n<lobby.min){st.textContent=`Noch ${lobby.min-n} Spieler nötig, sonst startet es nicht`;st.className='note warn';}
-  else{st.textContent='Genug Spieler – das Spiel startet, wenn der Timer abläuft';st.className='note';}
+  if(n<lobby.min){st.textContent=`${lobby.min-n} more player(s) needed, otherwise it won't start`;st.className='note warn';}
+  else{st.textContent='Enough players – the match starts when the timer runs out';st.className='note';}
 }
 setInterval(()=>{
   if(!lobby)return;
@@ -391,7 +391,7 @@ setInterval(()=>{
 $('btnJoin').onclick=()=>{initAudio();if(inLobby())send({t:'leave'});else{$('btnJoin').disabled=true;send({t:'join'});}};
 $('btnBack').onclick=()=>{window.location.href='/';};
 
-// ---------- Spiel ----------
+// ---------- Game ----------
 function clearGame(){if(!game)return;for(const c of game.cars.values())scene.remove(c.g);game=null;}
 function startGame(m){
   clearGame();
@@ -428,15 +428,15 @@ function newRound(m){
 }
 function onOut(m){
   const isMe=me&&m.id===me.id;
-  $('bannerT').textContent=isMe?'Du fliegst raus!':`${m.name} fliegt raus!`;
-  $('bannerS').textContent=`Nur ${m.monsters} Monster · Platz ${m.place}`+(m.left>1?` · Noch ${m.left} im Spiel`:'');
+  $('bannerT').textContent=isMe?'You\'re eliminated!':`${m.name} is eliminated!`;
+  $('bannerS').textContent=`Only ${m.monsters} monsters · Place ${m.place}`+(m.left>1?` · ${m.left} left in the game`:'');
   $('banner').classList.remove('hidden');
   setTimeout(()=>$('banner').classList.add('hidden'),4000);
 }
 function onEnd(m){
   const won=me&&m.winner.id===me.id;
-  $('endTitle').textContent=won?'Du hast gewonnen!':`${m.winner.name} gewinnt`;
-  $('endSub').textContent=won?`+${ton(m.prize)} TON wurden deinem Guthaben gutgeschrieben.`:`Gewinn: ${ton(m.prize)} TON`;
+  $('endTitle').textContent=won?'You won!':`${m.winner.name} wins`;
+  $('endSub').textContent=won?`+${ton(m.prize)} TON was added to your balance.`:`Prize: ${ton(m.prize)} TON`;
   const medal=['🥇','🥈','🥉'];
   $('endList').innerHTML=m.results.map(r=>`<div class="row ${me&&r.id===me.id?'me':''}"><span>${medal[r.place-1]||r.place+'.'} ${esc(r.name)}</span></div>`).join('');
   $('banner').classList.add('hidden');$('touch').classList.add('hidden');
@@ -509,15 +509,15 @@ function updHud(dt){
   if(game.phase==='count'){cnt.classList.remove('hidden');cnt.textContent=Math.max(1,Math.ceil(game.left-.3));}
   else cnt.classList.add('hidden');
   const s=Math.ceil(game.left);
-  $('timer').textContent=game.phase==='play'?`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`:game.phase==='break'?'Pause':'Gleich!';
+  $('timer').textContent=game.phase==='play'?`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`:game.phase==='break'?'Break':'Get ready!';
   $('timer').style.color=game.phase==='play'&&s<=10?'var(--hot)':'';
   hudT-=dt;if(hudT>0)return;hudT=.25;
   const alive=[...game.cars.values()].filter(o=>!o.out).sort((a,b)=>b.monsters-a.monsters);
-  $('roundLbl').textContent=`Runde ${game.round} · ${alive.length} übrig · Topf ${ton(game.pot)} TON`;
+  $('roundLbl').textContent=`Round ${game.round} · ${alive.length} left · Pot ${ton(game.pot)} TON`;
   $('board').innerHTML=alive.map((o,i)=>`<div class="${i===alive.length-1?'low':o.me?'me':''}"><span><span style="color:${hex(o.color)}">■</span> ${esc(o.name)}</span><span>${o.monsters} 👾</span></div>`).join('');
 }
 
-// Hintergrund-Kamera für Lobby
+// Background camera for the lobby
 let menuA=0,last=performance.now();
 function loop(now){
   requestAnimationFrame(loop);
