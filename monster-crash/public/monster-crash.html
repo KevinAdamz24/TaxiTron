@@ -337,7 +337,7 @@ function readInput(){
 const WS_URL=(location.protocol==='https:'?'wss://':'ws://')+location.host+'/mc';
 let ws=null,me=null,offset=0,lobby=null,game=null,view='connect';
 const send=m=>{if(ws&&ws.readyState===1)ws.send(JSON.stringify(m));};
-let voiceStream=null,voiceEnabled=false,voicePeers=new Map(),voiceAudioContext=null,voiceAudioUnlocked=false;
+let voiceStream=null,voiceEnabled=false,voicePeers=new Map(),voiceAudioContext=null,voiceAudioUnlocked=false,voiceLobbyStarted=false;
 const voiceSupported=!!(window.RTCPeerConnection&&navigator.mediaDevices&&navigator.mediaDevices.getUserMedia);
 function unlockVoiceAudio(){
   if(voiceAudioUnlocked)return;
@@ -357,6 +357,7 @@ function voiceReset(){
   if(voiceStream){voiceStream.getTracks().forEach(track=>track.stop());voiceStream=null;}
   if(voiceAudioContext){voiceAudioContext.close().catch(()=>{});voiceAudioContext=null;}
   voiceAudioUnlocked=false;
+  voiceLobbyStarted=false;
   voiceEnabled=false;
   const button=$('voice');
   button.classList.add('hidden');button.classList.remove('on');button.textContent='🎙️ Turn mic on';
@@ -375,7 +376,8 @@ function voicePeer(id,force=false){
   if(voicePeers.has(id)){
     return;
   }
-  const pc=new RTCPeerConnection({iceServers:game&&game.iceServers&&game.iceServers.length?game.iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
+  const servers=game&&game.iceServers&&game.iceServers.length?game.iceServers:lobby&&lobby.iceServers&&lobby.iceServers.length?lobby.iceServers:[{urls:'stun:stun.l.google.com:19302'}];
+  const pc=new RTCPeerConnection({iceServers:servers});
   const transceiver=pc.addTransceiver('audio',{direction:'recvonly'});
   const state={pc,audio:null,transceiver,sentStream:false,pendingCandidates:[],offerPending:false,makingOffer:false,ignoreOffer:false};
   voicePeers.set(id,state);
@@ -465,7 +467,7 @@ function connect(){
 function handle(m){
   switch(m.t){
     case 'me':me=m;$('myName').textContent=m.name;break;
-    case 'lobby':offset=m.now-Date.now();lobby=m;renderLobby();if(view==='connect'){view='lobby';screen('scrLobby');}break;
+    case 'lobby':offset=m.now-Date.now();lobby=m;renderLobby();if(view==='connect'){view='lobby';screen('scrLobby');}startLobbyVoice();break;
     case 'balance':$('balRow').style.display='';$('lBal').textContent=ton(m.nano)+' TON';break;
     case 'error':toast(m.msg);$('btnJoin').disabled=false;break;
     case 'cancelled':toast(m.msg,7000);break;
@@ -476,6 +478,13 @@ function handle(m){
     case 'end':if(game)onEnd(m);break;
     case 'voice-peer':voicePeer(m.id);break;
     case 'voice-signal':handleVoiceSignal(m);break;
+  }
+  function startLobbyVoice(){
+    if(voiceLobbyStarted||!voiceSupported)return;
+    voiceLobbyStarted=true;
+    $('voice').classList.remove('hidden');
+    send({t:'voice-hello'});
+    enableVoiceAutomatically();
   }
 }
 async function handleVoiceSignal(m){

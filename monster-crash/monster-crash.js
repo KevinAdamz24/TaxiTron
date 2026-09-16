@@ -96,6 +96,7 @@ function attachMonsterCrash(server, opts) {
     winnerShare: cfg.winnerShare,
     min: cfg.minPlayers,
     max: cfg.maxPlayers,
+    iceServers: cfg.iceServers,
   });
   const broadcastLobby = () => {
     const v = lobbyView();
@@ -182,9 +183,10 @@ function attachMonsterCrash(server, opts) {
       if (m.t === 'lobby') { if (!ws.matchId) send(ws, lobbyView()); return; }
       if (m.t === 'voice-hello' || m.t === 'voice-signal') {
         const mt = ws.matchId && matches.get(ws.matchId);
-        if (!mt) return;
         const target = m.t === 'voice-signal' && m.data && m.data.to;
-        for (const player of mt.players.values()) {
+        const players = mt ? mt.players.values() : lobby.players.values();
+        if (!mt && ws.matchId) return;
+        for (const player of players) {
           if (player.id === ws.user.id || (target && player.id !== target)) continue;
           const peer = conns.get(player.id);
           if (m.t === 'voice-hello') {
