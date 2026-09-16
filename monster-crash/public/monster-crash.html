@@ -370,7 +370,7 @@ function voiceOffer(peer){
 }
 function voicePeer(id){
   if(!me||id===me.id||voicePeers.has(id))return;
-  const pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
+  const pc=new RTCPeerConnection({iceServers:game&&game.iceServers&&game.iceServers.length?game.iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
   const state={pc,audio:null,sentStream:false,pendingCandidates:[],offerPending:false};
   voicePeers.set(id,state);
   pc.addTransceiver('audio',{direction:'recvonly'});
@@ -503,7 +503,7 @@ $('btnBack').onclick=()=>{window.location.href='/';};
 function clearGame(){if(!game)return;for(const c of game.cars.values())scene.remove(c.g);game=null;}
 function startGame(m){
   clearGame();
-  game={cars:new Map(),my:null,phase:'count',left:5,round:m.round,pot:m.pot,share:m.winnerShare,lastSend:0,intro:5,introAngle:0};
+  game={cars:new Map(),my:null,phase:'count',left:5,round:m.round,pot:m.pot,share:m.winnerShare,iceServers:m.iceServers||[],lastSend:0,intro:5,introAngle:0};
   for(const p of m.players){const c=makeCar(p,me&&p.id===me.id);game.cars.set(p.id,c);if(c.me)game.my=c;c.g.visible=!c.out;}
   const c=game.my;if(c)camera.position.set(c.x-Math.sin(c.a)*19,10,c.z-Math.cos(c.a)*19);
   $('touch').classList.toggle('hidden',!isTouch);
