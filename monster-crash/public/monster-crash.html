@@ -363,14 +363,14 @@ function unlockVoiceAudio(){
     const AudioContext=window.AudioContext||window.webkitAudioContext;
     if(AudioContext){
       voiceAudioContext=voiceAudioContext||new AudioContext();
-      voiceAudioContext.resume();
+      voiceAudioContext.resume().catch(error=>console.warn('[monster-crash] audio output unlock failed',error));
     }
     voiceAudioUnlocked=true;
-    for(const peer of voicePeers.values())if(peer.audio)peer.audio.play().catch(()=>{});
+    for(const peer of voicePeers.values())if(peer.audio&&!peer.outputSource)peer.audio.play().catch(()=>{});
   }catch(error){console.warn('[monster-crash] audio output unlock failed',error);}
 }
 function voiceReset(){
-  for(const peer of voicePeers.values()){peer.pc.close();peer.audio?.remove();}
+  for(const peer of voicePeers.values()){peer.pc.close();peer.outputSource?.disconnect();peer.audio?.remove();}
   voicePeers.clear();
   if(voiceStream){voiceStream.getTracks().forEach(track=>track.stop());voiceStream=null;}
   if(voiceAudioContext){voiceAudioContext.close().catch(()=>{});voiceAudioContext=null;}
@@ -380,6 +380,19 @@ function voiceReset(){
   syncVoiceButton();
 }
 function voiceSignal(peer,data){send({t:'voice-signal',data:{to:peer, ...data}});}
+function connectRemoteVoice(state,stream){
+  if(!voiceAudioContext||state.outputStream===stream)return false;
+  try{
+    state.outputSource?.disconnect();
+    state.outputSource=voiceAudioContext.createMediaStreamSource(stream);
+    state.outputSource.connect(voiceAudioContext.destination);
+    state.outputStream=stream;
+    return true;
+  }catch(error){
+    console.warn('[monster-crash] AudioContext remote playback failed',error);
+    return false;
+  }
+}
 async function voiceOffer(peer){
   const state=voicePeers.get(peer);
   if(!state)return;
@@ -406,20 +419,22 @@ function voicePeer(id){
   const servers=game&&game.iceServers&&game.iceServers.length?game.iceServers:lobby&&lobby.iceServers&&lobby.iceServers.length?lobby.iceServers:[{urls:'stun:stun.l.google.com:19302'}];
   const pc=new RTCPeerConnection({iceServers:servers});
   const transceiver=pc.addTransceiver('audio',{direction:'sendrecv'});
-  const state={pc,audio:null,transceiver,sentStream:false,pendingCandidates:[],makingOffer:false,negotiationPending:false,ignoreOffer:false,polite:String(me.id)>String(id)};
+  const shouldOffer=String(me.id)<String(id);
+  const state={pc,audio:null,outputSource:null,outputStream:null,transceiver,sentStream:false,pendingCandidates:[],makingOffer:false,negotiationPending:false,ignoreOffer:false,polite:!shouldOffer,shouldOffer};
   voicePeers.set(id,state);
   if(voiceStream){transceiver.sender.replaceTrack(voiceStream.getAudioTracks()[0]);transceiver.direction='sendrecv';state.sentStream=true;}
   pc.onicecandidate=e=>{if(e.candidate)voiceSignal(id,{candidate:e.candidate});};
-  pc.onnegotiationneeded=()=>voiceOffer(id);
+  pc.onnegotiationneeded=()=>{if(state.shouldOffer)voiceOffer(id);};
   pc.ontrack=e=>{
     const audio=state.audio||document.createElement('audio');
     const stream=e.streams[0]||new MediaStream([e.track]);
-    audio.autoplay=true;audio.playsInline=true;audio.muted=false;audio.volume=1;audio.srcObject=stream;
+    const routed=connectRemoteVoice(state,stream);
+    audio.autoplay=true;audio.playsInline=true;audio.muted=routed;audio.volume=1;audio.srcObject=stream;
     audio.dataset.voicePeer=id;if(!audio.isConnected)document.body.appendChild(audio);state.audio=audio;
-    const play=()=>audio.play().catch(error=>{
+    const play=()=>{if(state.outputSource)return;audio.play().catch(error=>{
       console.warn('[monster-crash] remote voice playback was blocked',error);
       if(error&&error.name==='NotAllowedError')toast('Tap the mic once to enable incoming voice.');
-    });
+    });};
     audio.oncanplay=play;
     audio.onloadedmetadata=play;
     e.track.onunmute=play;
@@ -438,7 +453,7 @@ function voicePeer(id){
       }
     }
   };
-  voiceOffer(id);
+  if(state.shouldOffer)voiceOffer(id);
 }
 async function requestVoiceAccess(){
   const button=getVoiceButton();
@@ -455,7 +470,6 @@ async function requestVoiceAccess(){
         state.transceiver.direction='sendrecv';
         state.sentStream=true;
       }
-      voiceOffer(id);
     }
     return true;
   }catch(error){
@@ -574,7 +588,7 @@ setInterval(()=>{
   const s=Math.max(0,Math.ceil((lobby.endsAt-(Date.now()+offset))/1000));
   $('lTimer').textContent=`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
 },250);
-$('btnJoin').onclick=()=>{initAudio();if(inLobby())send({t:'leave'});else{$('btnJoin').disabled=true;send({t:'join'});}};
+$('btnJoin').onclick=()=>{initAudio();unlockVoiceAudio();if(inLobby())send({t:'leave'});else{$('btnJoin').disabled=true;send({t:'join'});}};
 $('voice').onclick=toggleVoice;
 $('voiceLobby').onclick=toggleVoice;
 $('btnBack').onclick=()=>{window.location.href='/';};
