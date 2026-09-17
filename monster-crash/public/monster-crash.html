@@ -74,10 +74,7 @@ button{font:inherit;cursor:pointer}
 <body>
 <div id="toast" class="hidden"></div>
 
-<div id="scrConnect" class="overlay"><div class="card"><div class="stripe"></div><h1 class="disp">MONSTER<br>CRASH</h1><p class="sub" id="connMsg">Connecting…</p>
-  <div id="testLogin" class="hidden">
-    <p class="note">🧪 Test mode – automatic test ID, with play money</p>
-  </div></div></div>
+<div id="scrConnect" class="overlay"><div class="card"><div class="stripe"></div><h1 class="disp">MONSTER<br>CRASH</h1><p class="sub" id="connMsg">Connecting…</p></div></div>
 
 <div id="scrLobby" class="overlay hidden"><div class="card lobbyCard">
   <div class="stripe"></div>
@@ -448,17 +445,11 @@ async function enableVoiceAutomatically(){
   }
 }
 let authData=tg&&tg.initData?tg.initData:null;
-function testLogin(){
-  $('connMsg').textContent='Connecting test mode…';
-  $('testLogin').classList.remove('hidden');
-  let id=sessionStorage.getItem('mcId');
-  if(!id){id='t'+Math.random().toString(36).slice(2,9);sessionStorage.setItem('mcId',id);}
-  authData=`test:${id}:${id}`;
-  $('testLogin').classList.add('hidden');
-  connect();
-}
 function connect(){
-  if(!authData){testLogin();return;}
+  if(!authData){
+    $('connMsg').textContent='Open this page from Telegram to continue.';
+    return;
+  }
   ws=new WebSocket(WS_URL);
   ws.onopen=()=>send({t:'auth',initData:authData});
   ws.onmessage=e=>{let m;try{m=JSON.parse(e.data);}catch{return;}handle(m);};
