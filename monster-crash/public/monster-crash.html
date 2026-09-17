@@ -412,21 +412,27 @@ function voicePeer(id){
   pc.onicecandidate=e=>{if(e.candidate)voiceSignal(id,{candidate:e.candidate});};
   pc.onnegotiationneeded=()=>voiceOffer(id);
   pc.ontrack=e=>{
-    const audio=document.createElement('audio');
+    const audio=state.audio||document.createElement('audio');
     const stream=e.streams[0]||new MediaStream([e.track]);
     audio.autoplay=true;audio.playsInline=true;audio.muted=false;audio.volume=1;audio.srcObject=stream;
-    audio.dataset.voicePeer=id;document.body.appendChild(audio);state.audio=audio;
-    const play=()=>audio.play().catch(error=>console.warn('[monster-crash] remote voice playback was blocked',error));
+    audio.dataset.voicePeer=id;if(!audio.isConnected)document.body.appendChild(audio);state.audio=audio;
+    const play=()=>audio.play().catch(error=>{
+      console.warn('[monster-crash] remote voice playback was blocked',error);
+      if(error&&error.name==='NotAllowedError')toast('Tap the mic once to enable incoming voice.');
+    });
     audio.oncanplay=play;
+    audio.onloadedmetadata=play;
+    e.track.onunmute=play;
+    e.track.onended=()=>{if(!stream.getAudioTracks().some(track=>track.readyState==='live'))audio.pause();};
     if(voiceAudioUnlocked)play();
   };
   pc.onconnectionstatechange=()=>{
     if(pc.connectionState==='connected'){
       toast('Voice connected.',1800);
     }
-    if(['failed','closed','disconnected'].includes(pc.connectionState)){
+    if(['failed','closed'].includes(pc.connectionState)){
       state.audio?.remove();voicePeers.delete(id);
-      if(pc.connectionState==='failed'||pc.connectionState==='disconnected'){
+      if(pc.connectionState==='failed'){
         toast('Voice connection interrupted. Retrying…',3000);
         setTimeout(()=>{if(me&&ws&&ws.readyState===1&&!voicePeers.has(id))voicePeer(id);},1500);
       }
