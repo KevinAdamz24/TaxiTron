@@ -375,10 +375,10 @@ function voiceReset(){
   syncVoiceButton();
 }
 function voiceSignal(peer,data){send({t:'voice-signal',data:{to:peer, ...data}});}
-function voiceOffer(peer){
+function voiceOffer(peer,force=false){
   const state=voicePeers.get(peer);
   if(!state)return;
-  if(String(me.id)>=String(peer))return;
+  if(!force&&String(me.id)>=String(peer))return;
   if(state.makingOffer||state.pc.signalingState!=='stable'){state.offerPending=true;return;}
   state.makingOffer=true;
   state.pc.createOffer().then(offer=>state.pc.setLocalDescription(offer)).then(()=>voiceSignal(peer,{description:state.pc.localDescription})).catch(error=>console.warn('[monster-crash] voice offer failed',error)).finally(()=>{state.makingOffer=false;});
@@ -428,7 +428,7 @@ async function requestVoiceAccess(){
         state.transceiver.direction='sendrecv';
         state.sentStream=true;
       }
-      voiceOffer(id);
+      voiceOffer(id,true);
     }
     return true;
   }catch(error){
