@@ -377,13 +377,21 @@ function voiceReset(){
 function voiceSignal(peer,data){send({t:'voice-signal',data:{to:peer, ...data}});}
 async function voiceOffer(peer){
   const state=voicePeers.get(peer);
-  if(!state||state.makingOffer||state.pc.signalingState!=='stable')return;
+  if(!state)return;
+  if(state.makingOffer||state.pc.signalingState!=='stable'){
+    state.negotiationPending=true;
+    return;
+  }
   try{
     state.makingOffer=true;
+    state.negotiationPending=false;
     await state.pc.setLocalDescription();
     voiceSignal(peer,{description:state.pc.localDescription});
   }catch(error){console.warn('[monster-crash] voice negotiation failed',error);}
-  finally{state.makingOffer=false;}
+  finally{
+    state.makingOffer=false;
+    if(state.negotiationPending&&state.pc.signalingState==='stable')voiceOffer(peer);
+  }
 }
 function voicePeer(id){
   if(!me||id===me.id)return;
@@ -393,14 +401,15 @@ function voicePeer(id){
   const servers=game&&game.iceServers&&game.iceServers.length?game.iceServers:lobby&&lobby.iceServers&&lobby.iceServers.length?lobby.iceServers:[{urls:'stun:stun.l.google.com:19302'}];
   const pc=new RTCPeerConnection({iceServers:servers});
   const transceiver=pc.addTransceiver('audio',{direction:'sendrecv'});
-  const state={pc,audio:null,transceiver,sentStream:false,pendingCandidates:[],makingOffer:false,ignoreOffer:false,polite:String(me.id)>String(id)};
+  const state={pc,audio:null,transceiver,sentStream:false,pendingCandidates:[],makingOffer:false,negotiationPending:false,ignoreOffer:false,polite:String(me.id)>String(id)};
   voicePeers.set(id,state);
   if(voiceStream){transceiver.sender.replaceTrack(voiceStream.getAudioTracks()[0]);transceiver.direction='sendrecv';state.sentStream=true;}
   pc.onicecandidate=e=>{if(e.candidate)voiceSignal(id,{candidate:e.candidate});};
   pc.onnegotiationneeded=()=>voiceOffer(id);
   pc.ontrack=e=>{
     const audio=document.createElement('audio');
-    audio.autoplay=true;audio.playsInline=true;audio.muted=false;audio.volume=1;audio.srcObject=e.streams[0];
+    const stream=e.streams[0]||new MediaStream([e.track]);
+    audio.autoplay=true;audio.playsInline=true;audio.muted=false;audio.volume=1;audio.srcObject=stream;
     audio.dataset.voicePeer=id;document.body.appendChild(audio);state.audio=audio;
     const play=()=>audio.play().catch(error=>console.warn('[monster-crash] remote voice playback was blocked',error));
     audio.oncanplay=play;
