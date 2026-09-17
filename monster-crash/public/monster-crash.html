@@ -74,10 +74,7 @@ button{font:inherit;cursor:pointer}
 <body>
 <div id="toast" class="hidden"></div>
 
-<div id="scrConnect" class="overlay"><div class="card"><div class="stripe"></div><h1 class="disp">MONSTER<br>CRASH</h1><p class="sub" id="connMsg">Connecting…</p>
-  <div id="testLogin" class="hidden">
-    <p class="note">🧪 Test mode – automatic test ID, with play money</p>
-  </div></div></div>
+<div id="scrConnect" class="overlay"><div class="card"><div class="stripe"></div><h1 class="disp">MONSTER<br>CRASH</h1><p class="sub" id="connMsg">Connecting…</p></div></div>
 
 <div id="scrLobby" class="overlay hidden"><div class="card lobbyCard">
   <div class="stripe"></div>
@@ -366,7 +363,6 @@ function voiceSignal(peer,data){send({t:'voice-signal',data:{to:peer, ...data}})
 function voiceOffer(peer){
   const state=voicePeers.get(peer);
   if(!state)return;
-  if(String(me.id)>=String(peer))return;
   if(state.makingOffer||state.pc.signalingState!=='stable'){state.offerPending=true;return;}
   state.makingOffer=true;
   state.pc.createOffer().then(offer=>state.pc.setLocalDescription(offer)).then(()=>voiceSignal(peer,{description:state.pc.localDescription})).catch(error=>console.warn('[monster-crash] voice offer failed',error)).finally(()=>{state.makingOffer=false;});
@@ -381,7 +377,11 @@ function voicePeer(id,force=false){
   const transceiver=pc.addTransceiver('audio',{direction:'recvonly'});
   const state={pc,audio:null,transceiver,sentStream:false,pendingCandidates:[],offerPending:false,makingOffer:false,ignoreOffer:false};
   voicePeers.set(id,state);
-  if(voiceStream){transceiver.sender.replaceTrack(voiceStream.getAudioTracks()[0]);transceiver.direction='sendrecv';state.sentStream=true;}
+  if(voiceStream&&voiceStream.getAudioTracks().length){
+    transceiver.sender.replaceTrack(voiceStream.getAudioTracks()[0]);
+    transceiver.direction='sendrecv';
+    state.sentStream=true;
+  }
   pc.onicecandidate=e=>{if(e.candidate)voiceSignal(id,{candidate:e.candidate});};
   pc.ontrack=e=>{
     const audio=document.createElement('audio');
@@ -399,7 +399,7 @@ function voicePeer(id,force=false){
       state.audio?.remove();voicePeers.delete(id);
     }
   };
-  if(String(me.id)<String(id))voiceOffer(id);
+  voiceOffer(id);
 }
 async function toggleVoice(){
   const button=$('voice');
@@ -448,17 +448,11 @@ async function enableVoiceAutomatically(){
   }
 }
 let authData=tg&&tg.initData?tg.initData:null;
-function testLogin(){
-  $('connMsg').textContent='Connecting test mode…';
-  $('testLogin').classList.remove('hidden');
-  let id=sessionStorage.getItem('mcId');
-  if(!id){id='t'+Math.random().toString(36).slice(2,9);sessionStorage.setItem('mcId',id);}
-  authData=`test:${id}:${id}`;
-  $('testLogin').classList.add('hidden');
-  connect();
-}
 function connect(){
-  if(!authData){testLogin();return;}
+  if(!authData){
+    $('connMsg').textContent='Open this page from Telegram to continue.';
+    return;
+  }
   ws=new WebSocket(WS_URL);
   ws.onopen=()=>send({t:'auth',initData:authData});
   ws.onmessage=e=>{let m;try{m=JSON.parse(e.data);}catch{return;}handle(m);};
@@ -493,11 +487,8 @@ async function handleVoiceSignal(m){
   voicePeer(peer);
   const state=voicePeers.get(peer);if(!state)return;
   if(data.description){
-    const offerCollision=data.description.type==='offer'&&(state.makingOffer||state.pc.signalingState!=='stable');
-    state.ignoreOffer=String(me.id)<String(peer)&&offerCollision;
-    if(state.ignoreOffer)return;
-    if(data.description.type==='offer'&&offerCollision){
-      await state.pc.setLocalDescription({type:'rollback'});
+    if(data.description.type==='offer'&&state.pc.signalingState!=='stable'){
+      try{await state.pc.setLocalDescription({type:'rollback'});}catch(error){}
     }
     await state.pc.setRemoteDescription(data.description);
     for(const candidate of state.pendingCandidates.splice(0)){
