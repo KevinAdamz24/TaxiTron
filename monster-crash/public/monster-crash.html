@@ -337,6 +337,11 @@ let ws=null,me=null,offset=0,lobby=null,game=null,view='connect';
 const send=m=>{if(ws&&ws.readyState===1)ws.send(JSON.stringify(m));};
 let voiceStream=null,voiceEnabled=false,voicePeers=new Map(),voiceAudioContext=null,voiceAudioUnlocked=false,voiceLobbyStarted=false;
 const voiceSupported=!!(window.RTCPeerConnection&&navigator.mediaDevices&&navigator.mediaDevices.getUserMedia);
+function voiceUnavailableMessage(){
+  if(!window.isSecureContext)return 'Voice chat needs an HTTPS game URL inside Telegram.';
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)return 'This Telegram client cannot access the microphone.';
+  return 'Voice chat is not supported in this Telegram client.';
+}
 function getVoiceButton(){return view==='game' ? $('voice') : $('voiceLobby');}
 function syncVoiceButton(){
   if(!voiceSupported){
@@ -432,7 +437,7 @@ function voicePeer(id){
 async function requestVoiceAccess(){
   const button=getVoiceButton();
   unlockVoiceAudio();
-  if(!voiceSupported){toast('Voice chat is not supported in this browser.');return false;}
+  if(!voiceSupported){toast(voiceUnavailableMessage());return false;}
   try{
     if(!voiceStream)voiceStream=await navigator.mediaDevices.getUserMedia({audio:true,video:false});
     voiceStream.getAudioTracks().forEach(track=>track.enabled=true);
@@ -449,7 +454,12 @@ async function requestVoiceAccess(){
     return true;
   }catch(error){
     console.error('[monster-crash] microphone access failed',error);
-    toast('Tap the mic button and allow mic access so everyone can hear you.');
+    const message=error&&error.name==='NotAllowedError'
+      ? 'Allow microphone access for Telegram, then tap the mic again.'
+      : error&&error.name==='NotFoundError'
+        ? 'No microphone was found on this device.'
+        : 'Microphone access failed. Try again from the Telegram app.';
+    toast(message);
     syncVoiceButton();
     voiceEnabled=false;
     return false;
@@ -457,7 +467,7 @@ async function requestVoiceAccess(){
 }
 async function toggleVoice(){
   const button=getVoiceButton();
-  if(!voiceSupported){toast('Voice chat is not supported in this browser.');return;}
+  if(!voiceSupported){toast(voiceUnavailableMessage());return;}
   if(voiceEnabled){
     if(voiceStream)voiceStream.getAudioTracks().forEach(track=>track.enabled=false);
     voiceEnabled=false;syncVoiceButton();return;
@@ -496,7 +506,8 @@ function handle(m){
     case 'voice-signal':handleVoiceSignal(m);break;
   }
   function startLobbyVoice(){
-    if(voiceLobbyStarted||!voiceSupported)return;
+    if(voiceLobbyStarted)return;
+    if(!voiceSupported){toast(voiceUnavailableMessage(),5000);return;}
     voiceLobbyStarted=true;
     syncVoiceButton();
     send({t:'voice-hello'});
@@ -570,12 +581,10 @@ function startGame(m){
   for(const p of m.players){const c=makeCar(p,me&&p.id===me.id);game.cars.set(p.id,c);if(c.me)game.my=c;c.g.visible=!c.out;}
   const c=game.my;if(c)camera.position.set(c.x-Math.sin(c.a)*19,10,c.z-Math.cos(c.a)*19);
   $('touch').classList.toggle('hidden',!isTouch);
-  $('voice').classList.toggle('hidden',!voiceSupported||view!=='game');
-  $('voiceLobby').classList.toggle('hidden',!voiceSupported||view==='game');
   send({t:'voice-hello'});
-  toast('Tap the mic button to allow voice chat.');
   $('banner').classList.add('hidden');
-  view='game';screen('game');
+  view='game';screen('game');syncVoiceButton();
+  toast('Tap the mic button to allow voice chat.');
 }
 function applyState(s){
   game.phase=s.ph;game.left=s.left;game.round=s.round;

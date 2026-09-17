@@ -22,10 +22,11 @@ npm start
   `server.js`, so leave Railway's Root Directory empty.
 2. Add a Volume, mount it at `/data`.
 3. Set environment variables: `BOT_TOKEN`, `SESSION_SECRET`,
-  `ADMIN_SECRET`, `PLATFORM_USER_ID`, `DATA_DIR=/data`. Optionally set
-  `DEPOSIT_ADDRESS`, `TONAPI_URL`, `DEPOSIT_POLL_MS`, and private TURN
-  credentials. Without private TURN credentials, the app uses a public relay
-  for testing; replace it before production use.
+  `ADMIN_SECRET`, `PLATFORM_USER_ID`, `DATA_DIR=/data`. For Monster Crash
+  voice chat, set `TURN_URL`, `TURN_USERNAME`, and `TURN_CREDENTIAL` from a
+  private TURN provider. TURN is required for reliable Telegram mobile voice
+  chat because many mobile networks cannot connect through STUN alone. Use an
+  HTTPS public domain for the Mini App so Telegram can grant microphone access.
 4. Deploy. Railway provides `PORT` automatically.
 5. In `app.js`, make sure `SERVER_URL` points at the Railway domain.
   The current production fallback is `https://taxitron-production.up.railway.app`.
