@@ -87,6 +87,7 @@ button{font:inherit;cursor:pointer}
       <div class="plist lobbyPlayers" id="lPlayers"></div>
     </div>
   </div>
+  <button id="voiceLobby" class="big alt hidden" type="button">🎙️ Test mic in lobby</button>
   <button class="big" id="btnJoin">Join – 0.001 TON</button>
   <p class="note">Stake 0.001 TON · If fewer than 3 players join, it is automatically refunded.</p>
 </div></div>
@@ -336,6 +337,21 @@ let ws=null,me=null,offset=0,lobby=null,game=null,view='connect';
 const send=m=>{if(ws&&ws.readyState===1)ws.send(JSON.stringify(m));};
 let voiceStream=null,voiceEnabled=false,voicePeers=new Map(),voiceAudioContext=null,voiceAudioUnlocked=false,voiceLobbyStarted=false;
 const voiceSupported=!!(window.RTCPeerConnection&&navigator.mediaDevices&&navigator.mediaDevices.getUserMedia);
+function getVoiceButton(){return view==='game' ? $('voice') : $('voiceLobby');}
+function syncVoiceButton(){
+  if(!voiceSupported){
+    $('voice').classList.add('hidden');
+    $('voiceLobby').classList.add('hidden');
+    return;
+  }
+  const active=view==='game';
+  $('voice').classList.toggle('hidden', !active);
+  $('voiceLobby').classList.toggle('hidden', active);
+  const button=getVoiceButton();
+  if(!button)return;
+  button.classList.toggle('on', voiceEnabled);
+  button.textContent=voiceEnabled ? '🎙️ Turn mic off' : (active ? '🎙️ Turn mic on' : '🎙️ Test mic in lobby');
+}
 function unlockVoiceAudio(){
   if(voiceAudioUnlocked)return;
   try{
@@ -356,8 +372,7 @@ function voiceReset(){
   voiceAudioUnlocked=false;
   voiceLobbyStarted=false;
   voiceEnabled=false;
-  const button=$('voice');
-  button.classList.add('hidden');button.classList.remove('on');button.textContent='🎙️ Turn mic on';
+  syncVoiceButton();
 }
 function voiceSignal(peer,data){send({t:'voice-signal',data:{to:peer, ...data}});}
 function voiceOffer(peer){
@@ -398,18 +413,15 @@ function voicePeer(id,force=false){
   };
   if(String(me.id)<String(id))voiceOffer(id);
 }
-async function toggleVoice(){
-  const button=$('voice');
+async function requestVoiceAccess(){
+  const button=getVoiceButton();
   unlockVoiceAudio();
-  if(!voiceSupported){toast('Voice chat is not supported in this browser.');return;}
-  if(voiceEnabled){
-    voiceStream.getAudioTracks().forEach(track=>track.enabled=false);
-    voiceEnabled=false;button.classList.remove('on');button.textContent='🎙️ Turn mic on';return;
-  }
+  if(!voiceSupported){toast('Voice chat is not supported in this browser.');return false;}
   try{
     if(!voiceStream)voiceStream=await navigator.mediaDevices.getUserMedia({audio:true,video:false});
     voiceStream.getAudioTracks().forEach(track=>track.enabled=true);
-    voiceEnabled=true;button.classList.add('on');button.textContent='🎙️ Turn mic off';
+    voiceEnabled=true;
+    syncVoiceButton();
     for(const [id,state] of voicePeers){
       if(!state.sentStream){
         state.transceiver.sender.replaceTrack(voiceStream.getAudioTracks()[0]);
@@ -418,31 +430,28 @@ async function toggleVoice(){
       }
       voiceOffer(id);
     }
-  }catch(error){console.error('[monster-crash] microphone access failed',error);toast('Microphone access was denied.');}
+    return true;
+  }catch(error){
+    console.error('[monster-crash] microphone access failed',error);
+    toast('Tap the mic button and allow mic access so everyone can hear you.');
+    syncVoiceButton();
+    voiceEnabled=false;
+    return false;
+  }
+}
+async function toggleVoice(){
+  const button=getVoiceButton();
+  if(!voiceSupported){toast('Voice chat is not supported in this browser.');return;}
+  if(voiceEnabled){
+    if(voiceStream)voiceStream.getAudioTracks().forEach(track=>track.enabled=false);
+    voiceEnabled=false;syncVoiceButton();return;
+  }
+  await requestVoiceAccess();
 }
 async function enableVoiceAutomatically(){
   if(!voiceSupported||voiceEnabled)return;
-  const button=$('voice');
-  unlockVoiceAudio();
-  try{
-    voiceStream=voiceStream||await navigator.mediaDevices.getUserMedia({audio:true,video:false});
-    voiceStream.getAudioTracks().forEach(track=>track.enabled=true);
-    voiceEnabled=true;
-    button.classList.add('on');
-    button.textContent='🎙️ Turn mic off';
-    for(const [id,state] of voicePeers){
-      if(!state.sentStream){
-        state.transceiver.sender.replaceTrack(voiceStream.getAudioTracks()[0]);
-        state.transceiver.direction='sendrecv';
-        state.sentStream=true;
-      }
-      voiceOffer(id);
-    }
-  }catch(error){
-    console.warn('[monster-crash] automatic microphone access was not granted',error);
-    button.classList.remove('on');
-    button.textContent='🎙️ Turn mic on';
-  }
+  syncVoiceButton();
+  toast('Tap the mic button to allow voice chat.');
 }
 let authData=tg&&tg.initData?tg.initData:null;
 function connect(){
@@ -473,9 +482,9 @@ function handle(m){
   function startLobbyVoice(){
     if(voiceLobbyStarted||!voiceSupported)return;
     voiceLobbyStarted=true;
-    $('voice').classList.remove('hidden');
+    syncVoiceButton();
     send({t:'voice-hello'});
-    enableVoiceAutomatically();
+    toast('Tap the mic button to allow voice chat.');
   }
 }
 async function handleVoiceSignal(m){
@@ -533,6 +542,7 @@ setInterval(()=>{
 },250);
 $('btnJoin').onclick=()=>{initAudio();if(inLobby())send({t:'leave'});else{$('btnJoin').disabled=true;send({t:'join'});}};
 $('voice').onclick=toggleVoice;
+$('voiceLobby').onclick=toggleVoice;
 $('btnBack').onclick=()=>{window.location.href='/';};
 
 // ---------- Game ----------
@@ -543,9 +553,10 @@ function startGame(m){
   for(const p of m.players){const c=makeCar(p,me&&p.id===me.id);game.cars.set(p.id,c);if(c.me)game.my=c;c.g.visible=!c.out;}
   const c=game.my;if(c)camera.position.set(c.x-Math.sin(c.a)*19,10,c.z-Math.cos(c.a)*19);
   $('touch').classList.toggle('hidden',!isTouch);
-  $('voice').classList.toggle('hidden',!voiceSupported);
+  $('voice').classList.toggle('hidden',!voiceSupported||view!=='game');
+  $('voiceLobby').classList.toggle('hidden',!voiceSupported||view==='game');
   send({t:'voice-hello'});
-  enableVoiceAutomatically();
+  toast('Tap the mic button to allow voice chat.');
   $('banner').classList.add('hidden');
   view='game';screen('game');
 }
