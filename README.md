@@ -23,7 +23,9 @@ npm start
 2. Add a Volume, mount it at `/data`.
 3. Set environment variables: `BOT_TOKEN`, `SESSION_SECRET`,
   `ADMIN_SECRET`, `PLATFORM_USER_ID`, `DATA_DIR=/data`. Optionally set
-  `DEPOSIT_ADDRESS`, `TONAPI_URL`, `DEPOSIT_POLL_MS`, and TURN credentials.
+  `DEPOSIT_ADDRESS`, `TONAPI_URL`, `DEPOSIT_POLL_MS`, and private TURN
+  credentials. Without private TURN credentials, the app uses a public relay
+  for testing; replace it before production use.
 4. Deploy. Railway provides `PORT` automatically.
 5. In `app.js`, make sure `SERVER_URL` points at the Railway domain.
   The current production fallback is `https://taxitron-production.up.railway.app`.

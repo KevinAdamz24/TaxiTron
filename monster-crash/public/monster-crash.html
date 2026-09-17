@@ -407,8 +407,15 @@ function voicePeer(id){
     if(voiceAudioUnlocked)play();
   };
   pc.onconnectionstatechange=()=>{
+    if(pc.connectionState==='connected'){
+      toast('Voice connected.',1800);
+    }
     if(['failed','closed','disconnected'].includes(pc.connectionState)){
       state.audio?.remove();voicePeers.delete(id);
+      if(pc.connectionState==='failed'||pc.connectionState==='disconnected'){
+        toast('Voice connection interrupted. Retrying…',3000);
+        setTimeout(()=>{if(me&&ws&&ws.readyState===1&&!voicePeers.has(id))voicePeer(id);},1500);
+      }
     }
   };
   voiceOffer(id);

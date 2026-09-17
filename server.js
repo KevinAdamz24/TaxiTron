@@ -72,9 +72,18 @@ const TURN_USERNAME = String(process.env.TURN_USERNAME || '').trim();
 const TURN_CREDENTIAL = String(process.env.TURN_CREDENTIAL || '').trim();
 const MONSTER_CRASH_ICE_SERVERS = [
   { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun.cloudflare.com:3478' },
   ...(TURN_URL && TURN_USERNAME && TURN_CREDENTIAL
     ? [{ urls: TURN_URL, username: TURN_USERNAME, credential: TURN_CREDENTIAL }]
-    : []),
+    : [{
+      urls: [
+        'turn:openrelay.metered.ca:80',
+        'turn:openrelay.metered.ca:443',
+        'turns:openrelay.metered.ca:443?transport=tcp',
+      ],
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    }]),
 ];
 
 const ON_RAILWAY = !!(process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_ENVIRONMENT_NAME || process.env.RAILWAY_PROJECT_ID);
